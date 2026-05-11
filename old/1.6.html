@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS</title>
+
+<style>
+  /* Глобальные переменные системы */
+  :root {
+    --accent: #2b8cff;
+    --danger: #ff4d4d;
+    --text: #e6eef8;
+    --win-bg-rgb: 22, 31, 41;
+    --win-opacity: 0.85;
+    --glass-blur: 15px;
+    --win-radius: 16px;
+    --btn-radius: 10px;
+    --blur: 0px;
+  }
+
+  * { box-sizing: border-box; -webkit-touch-callout: none; font-family: system-ui, sans-serif; transition: border-radius 0.3s, background 0.3s, color 0.3s; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: #000; color: var(--text); user-select: none; }
+  
+  /* Экран входа (Новое!) */
+  #login-screen { position: fixed; inset: 0; background: rgba(10, 15, 20, 0.95); backdrop-filter: blur(20px); z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .login-box { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 40px rgba(0,0,0,0.8); width: 300px; }
+  .login-box h2 { margin-top: 0; }
+
+  /* Рабочий стол и иконки */
+  .desktop { position: fixed; inset: 0; background-size: cover; background-position: center; filter: blur(var(--blur)); z-index: 1; }
+  .desktop-icons { position: fixed; top: 0; left: 0; width: 100%; height: calc(100% - 120px); padding: 20px; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 20px; z-index: 10; pointer-events: none; }
+  .desk-icon { width: 64px; display: flex; flex-direction: column; align-items: center; cursor: pointer; pointer-events: auto; }
+  .desk-icon-img { width: 54px; height: 54px; background: rgba(128,128,128,0.3); backdrop-filter: blur(5px); border-radius: var(--btn-radius); display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+  .desk-icon-text { font-size: 11px; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.8); color: #fff; word-break: break-word; font-weight: 500; }
+
+  /* Панель задач */
+  .taskbar-container { position: fixed; bottom: 100px; left: 20px; z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .taskbar { display: none; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); padding: 12px; border-radius: var(--win-radius); border: 1px solid rgba(128,128,128,0.2); flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .taskbar.active { display: flex; }
+  .burger { width: 55px; height: 55px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.4); z-index: 10000; }
+  .icon-btn { width: 48px; height: 48px; border-radius: var(--btn-radius); background: rgba(128,128,128,0.15); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; }
+
+  /* Виджет логов */
+  #log-widget { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-radius: var(--btn-radius); padding: 10px; font-size: 11px; width: 250px; z-index: 50; display: none; border: 1px solid rgba(255,255,255,0.1); pointer-events: none; }
+  .log-entry { margin-bottom: 5px; color: #aaa; }
+  .log-entry.error { color: var(--danger); font-weight: bold; }
+
+  /* Окна */
+  .window { position: absolute; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); border-radius: var(--win-radius); border: 1px solid rgba(128,128,128,0.2); display: none; flex-direction: column; overflow: hidden; z-index: 500; min-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .win-header { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: rgba(128,128,128,0.1); cursor: move; border-bottom: 1px solid rgba(128,128,128,0.1); }
+  .ctrl-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(128,128,128,0.2); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .win-content { flex: 1; overflow: auto; padding: 15px; display: flex; flex-direction: column; }
+  .resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%); border-bottom-right-radius: var(--win-radius); z-index: 10; touch-action: none; }
+
+  /* Инфо-панель */
+  .info-bar { position: fixed; bottom: 25px; left: 0; width: 100%; display: flex; justify-content: center; gap: 8px; font-size: 11px; z-index: 9998; pointer-events: none; }
+  .info-unit { background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); padding: 5px 12px; border-radius: var(--btn-radius); border: 1px solid rgba(128,128,128,0.2); }
+
+  /* Элементы управления внутри окон */
+  .toolbar { display: flex; gap: 5px; padding-bottom: 10px; border-bottom: 1px solid rgba(128,128,128,0.2); margin-bottom: 10px; overflow-x: auto; flex-shrink: 0; }
+  .toolbar .btn { width: auto; padding: 8px 12px; margin: 0; font-size: 12px; font-weight: normal; background: rgba(128,128,128,0.2); }
+  .toolbar .btn:hover { background: var(--accent); }
+  
+  .list-item { padding: 10px; background: rgba(128,128,128,0.05); border-radius: var(--btn-radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; cursor: pointer; border: 1px solid transparent; }
+  .list-item:hover { background: rgba(128,128,128,0.15); }
+  .list-item.selected { border-color: var(--accent); background: rgba(43, 140, 255, 0.2); }
+  
+  textarea, input[type="text"], input[type="color"], select { width: 100%; padding: 12px; background: rgba(128,128,128,0.1); border: 1px solid rgba(128,128,128,0.3); color: var(--text); border-radius: var(--btn-radius); margin-bottom: 10px; font-size: 14px; outline: none; }
+  .btn { padding: 12px; border-radius: var(--btn-radius); border: none; background: var(--accent); color: white; width: 100%; font-weight: bold; cursor: pointer; margin: 5px 0; }
+  
+  /* Вкладки и галерея в Настройках */
+  .config-zone { background: rgba(128,128,128,0.1); padding: 10px; border-radius: var(--btn-radius); display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; border: 1px dashed rgba(128,128,128,0.3); min-height: 50px; }
+  .drag-item { background: var(--accent); padding: 6px 14px; border-radius: var(--btn-radius); font-size: 12px; cursor: pointer; color: #fff; }
+  .drag-item.hidden { background: rgba(128,128,128,0.3); opacity: 0.7; color: var(--text); }
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0; }
+  .gal-item { height: 65px; border-radius: 8px; background-size: cover; background-position: center; cursor: pointer; border: 2px solid transparent; position: relative; }
+  .gal-item.active { border-color: var(--accent); }
+  .add-btn { border: 2px dashed rgba(128,128,128,0.5); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; height: 65px; border-radius: 8px; }
+  
+  .tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(128,128,128,0.2); overflow-x: auto; padding-bottom: 5px; flex-shrink: 0; }
+  .tab-link { padding: 8px 15px; font-size: 13px; opacity: 0.5; white-space: nowrap; cursor: pointer; border-radius: var(--btn-radius); }
+  .tab-link.active { opacity: 1; background: rgba(128,128,128,0.2); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h2>WebSAOS</h2>
+    <p style="font-size:12px; opacity:0.7; margin-top:-10px;">Выберите пользователя или создайте нового</p>
+    
+    <select id="login-user-select" style="margin-bottom: 10px;"></select>
+    
+    <div style="font-size:12px; margin: 10px 0;">— ИЛИ —</div>
+    
+    <input type="text" id="login-new-user" placeholder="Новое имя (напр. Guest)">
+    
+    <button class="btn" onclick="performLogin()">Войти в систему</button>
+  </div>
+</div>
+
+<div id="desktop" class="desktop"></div>
+<div id="desktop-icons" class="desktop-icons"></div>
+<div id="info-bar" class="info-bar"></div> <div id="log-widget"></div>
+
+<input type="file" id="file-upload" accept="image/*" style="display:none">
+<input type="file" id="js-upload" accept=".js,.txt" style="display:none">
+
+<div class="taskbar-container">
+  <div class="taskbar" id="main-menu">
+    <div class="icon-btn" onclick="openWin('win-app-manager')" title="Менеджер">📦</div>
+    <div class="icon-btn" onclick="openWin('win-fm')" title="Файлы">📁</div>
+    <div class="icon-btn" onclick="openAppIDE()" title="Создать App">✨</div>
+    <div class="icon-btn" onclick="openWin('win-settings')" title="Настройки">⚙️</div>
+    <div class="icon-btn" onclick="logout()" title="Сменить пользователя" style="background: rgba(255, 77, 77, 0.3);">🚪</div>
+  </div>
+  <div class="burger" id="burger-btn">📱</div> 
+</div>
+
+<div id="win-settings" class="window" style="width:90%; height:85%; top:5%; left:5%;">
+  <div class="win-header">
+    <span>Настройки</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-settings">✕</button>
+  </div>
+  <div class="win-content">
+    <div class="tabs">
+      <div class="tab-link active" onclick="switchTab(this, 'tab-desk')">Экран</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-widgets')">Виджеты</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-theme')">Стиль</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-system')">Система</div>
+    </div>
+    
+    <div id="tab-desk" class="tab-content">
+      <label style="font-size:12px; opacity:0.7">Установить обои (Файл):</label>
+      <button class="btn" style="background:rgba(128,128,128,0.2); color:var(--text); margin-bottom:15px;" onclick="document.getElementById('file-upload').click()">🖼 Выбрать фото с устройства</button>
+      
+      <label style="font-size:12px; opacity:0.7">Установить обои (Ссылка URL):</label>
+      <div style="display:flex; gap:5px; margin-bottom:15px;">
+        <input type="text" id="bg-url-input" placeholder="https://..." style="margin:0;">
+        <button class="btn" style="width:auto; margin:0; padding: 0 20px;" onclick="setBgUrl()">ОК</button>
+      </div>
+
+      <label style="font-size:12px; opacity:0.7">Цвет фона:</label>
+      <input type="color" id="bg-color-pick" onchange="setSolidColor(this.value)" style="height:40px; border:none; background:none; cursor:pointer;">
+      <button class="btn" onclick="toggleBlur()" style="background:rgba(128,128,128,0.2); color:var(--text)">Вкл/Выкл Блюр</button>
+    </div>
+
+    <div id="tab-widgets" class="tab-content" style="display:none">
+      <label style="font-size:11px">АКТИВНЫЕ (клик для скрытия):</label>
+      <div id="active-units" class="config-zone"></div>
+      <label style="font-size:11px">СКРЫТЫЕ:</label>
+      <div id="hidden-units" class="config-zone"></div>
+      <hr style="border:0; border-top:1px solid rgba(128,128,128,0.2); margin: 15px 0;">
+      <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px;">
+        <input type="checkbox" id="chk-log-widget" onchange="toggleLogWidget(this.checked)" style="width:auto; margin:0;">
+        Показывать Виджет Логов на рабочем столе
+      </label>
+    </div>
+
+    <div id="tab-theme" class="tab-content" style="display:none">
+      <label style="font-size:12px">Цветовая тема:</label>
+      <select id="sel-theme" onchange="changeTheme(this.value)">
+        <option value="t1">1. Тёмная классика</option>
+        <option value="t2">2. Светлый день</option>
+        <option value="t3">3. Хакер</option>
+        <option value="t4">4. Неон</option>
+      </select>
+      <label style="font-size:12px">Форма интерфейса:</label>
+      <select id="sel-form" onchange="changeForm(this.value)">
+        <option value="f1">1. Квадратная</option>
+        <option value="f2">2. Острая</option>
+        <option value="f3">3. Стандартная</option>
+        <option value="f4">4. Плавная</option>
+        <option value="f5">5. Круглая</option>
+      </select>
+    </div>
+
+    <div id="tab-system" class="tab-content" style="display:none">
+      <h3 style="margin-top:0">WebSAOS</h3>
+      <p style="opacity:0.7">Версия 1.6 (Multi-User)</p>
+      <p id="cur-user" style="font-weight:bold"></p>
+      <button class="btn" style="background:var(--danger); margin-top:20px;" onclick="fullReset()">Полный сброс системы</button>
+    </div>
+  </div>
+</div>
+
+<div id="win-app-manager" class="window" style="width:85%; height:75%; top:10%; left:7%;">
+  <div class="win-header">
+    <span>Менеджер Приложений</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-app-manager">✕</button>
+  </div>
+  <div class="win-content">
+    <button class="btn" onclick="document.getElementById('js-upload').click()" style="margin-bottom:15px;">📥 Установить .js с устройства</button>
+    <div id="app-manager-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column;"></div>
+  </div>
+</div>
+
+<div id="win-note" class="window" style="width:90%; height:80%; top:5%; left:5%;">
+  <div class="win-header">
+    <span id="note-title">Блокнот</span>
+    <button class="ctrl-btn" style="background:var(--danger)" onclick="closeNotepad()">✕</button>
+  </div>
+  <div class="win-content" style="padding: 10px;">
+    <div class="toolbar" id="note-toolbar">
+      <button class="btn" onclick="openFilePrompt()">📂 Открыть</button>
+      <button class="btn" onclick="saveFileContent()">💾 Сохранить</button>
+      <button class="btn" onclick="downloadCurrentFile()">⬇️ Скачать</button>
+    </div>
+    <input type="text" id="app-name-input" placeholder="Имя файла..." readonly style="margin-bottom:5px;">
+    <textarea id="note-pad" style="flex:1; margin:0;" placeholder="Текст файла..." oninput="noteModified = true"></textarea>
+  </div>
+</div>
+
+<div id="win-ide" class="window" style="width:90%; height:80%; top:5%; left:5%;">
+  <div class="win-header">
+    <span>App Builder (Без кода)</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-ide">✕</button>
+  </div>
+  <div class="win-content">
+    <p style="font-size:12px; opacity:0.8; margin-top:0;">Создайте свое приложение за пару кликов!</p>
+    <input type="text" id="ide-name" placeholder="Название (напр. Моя Визитка)">
+    <input type="text" id="ide-icon" placeholder="Эмодзи иконка (напр. 📇)">
+    
+    <label style="font-size:12px;">Цвет фона приложения:</label>
+    <input type="color" id="ide-bg" value="#ffffff" style="height:40px; border:none; background:none; cursor:pointer;">
+    
+    <input type="text" id="ide-title" placeholder="Главный заголовок внутри приложения">
+    <input type="text" id="ide-btn-text" placeholder="Текст на кнопке (напр. Нажми меня)">
+    <input type="text" id="ide-alert" placeholder="Сообщение, которое покажется при клике">
+    
+    <button class="btn" onclick="generateAndInstallApp()">🚀 Создать и Установить</button>
+  </div>
+</div>
+
+<div id="win-fm" class="window" style="width:85%; height:75%; top:10%; left:7%;">
+  <div class="win-header">
+    <span>Файловый менеджер</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-fm">✕</button>
+  </div>
+  <div class="win-content">
+    <div class="toolbar">
+      <button class="btn" onclick="createFMItem('file')">📄 Файл</button>
+      <button class="btn" onclick="createFMItem('folder')">📁 Папка</button>
+      <button class="btn" onclick="renameSelected()">✏️ Переименовать</button>
+      <button class="btn" style="color:var(--danger)" onclick="deleteSelected()">🗑 Удалить</button>
+    </div>
+    
+    <div style="font-size:12px; margin-bottom:10px; opacity:0.8; display:flex; align-items:center; gap:10px;">
+      <button class="btn" style="width:auto; padding:3px 8px; margin:0;" onclick="goUpDir()">⬅ Назад</button>
+      <span id="fm-current-path">/root/</span>
+    </div>
+    
+    <div id="fm-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column;"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // --- ПЕРЕМЕННЫЕ СИСТЕМЫ ---
+  let highestZ = 1000;
+  const labels = { hours:'Часы', minutes:'Мин', seconds:'Сек', battery:'Заряд', date:'Дата', weekday:'День' };
+  
+  const THEMES = {
+    t1: { accent: '#2b8cff', winRgb: '22, 31, 41', text: '#e6eef8' },
+    t2: { accent: '#0066cc', winRgb: '240, 240, 245', text: '#1a1a1a' },
+    t3: { accent: '#00ff00', winRgb: '0, 0, 0', text: '#00ff00' },
+    t4: { accent: '#ff00ff', winRgb: '30, 10, 40', text: '#00ffff' }
+  };
+  const FORMS = { f1: { win: '0px', btn: '0px' }, f2: { win: '8px', btn: '4px' }, f3: { win: '16px', btn: '10px' }, f4: { win: '24px', btn: '16px' }, f5: { win: '32px', btn: '24px' } };
+
+  let currentUser = '';
+  let usersList = [];
+  let state = {};
+
+  let currentDir = 'root'; 
+  let selectedFmId = null; 
+  let currentFileEditingId = null; 
+  let noteModified = false; 
+  let editingApp = false; 
+
+  // --- СИСТЕМА ПОЛЬЗОВАТЕЛЕЙ (НОВОЕ) ---
+  
+  // При загрузке страницы показываем экран входа
+  window.onload = () => {
+    // Получаем список пользователей из памяти (если пусто - создаем Admin по умолчанию)
+    usersList = JSON.parse(localStorage.getItem('websaos_users')) || ['Admin'];
+    
+    const select = document.getElementById('login-user-select');
+    select.innerHTML = '';
+    usersList.forEach(u => {
+      let opt = document.createElement('option');
+      opt.value = u; opt.textContent = u;
+      select.appendChild(opt);
+    });
+    
+    document.getElementById('login-screen').style.display = 'flex';
+  };
+
+  // Вызывается при нажатии "Войти"
+  window.performLogin = () => {
+    const newVal = document.getElementById('login-new-user').value.trim();
+    const selVal = document.getElementById('login-user-select').value;
+    
+    // Если вписали новое имя, используем его. Иначе берем из выпадающего списка.
+    currentUser = newVal !== '' ? newVal : selVal;
+    
+    // Проверка, нельзя использовать зарезервированные имена или пустоту
+    if (!currentUser) return alert('Введите имя!');
+    
+    // Если пользователя еще нет в списке - добавляем
+    if (!usersList.includes(currentUser)) {
+      usersList.push(currentUser);
+      localStorage.setItem('websaos_users', JSON.stringify(usersList));
+    }
+    
+    document.getElementById('login-screen').style.display = 'none';
+    
+    // Загружаем настройки ИМЕННО ЭТОГО пользователя
+    state = JSON.parse(localStorage.getItem(`websaos_config_${currentUser}`)) || {
+      bgType: 'image', bgValue: '', userImages: [], 
+      themeId: 't1', formId: 'f3', blur: '0px',
+      infoLayout: ['hours', 'minutes', 'battery'], 
+      hiddenLayout: ['seconds', 'date', 'weekday'], 
+      showLogWidget: false 
+    };
+
+    init(); // Запускаем саму ОС
+  }
+  
+  // Кнопка выхода из аккаунта
+  window.logout = () => {
+      document.getElementById('main-menu').classList.remove('active');
+      document.getElementById('login-screen').style.display = 'flex';
+  }
+
+  // --- ИНИЦИАЛИЗАЦИЯ ОС ---
+  function init() {
+    initFileSystem(); 
+    applySettings(); 
+    renderConfig(); 
+    updateFM(); 
+    loadCustomApps(); 
+    updateLogWidget(); 
+    
+    document.querySelectorAll('.window').forEach(win => { initDrag(win); initResize(win); });
+    document.getElementById('cur-user').textContent = "Текущий профиль: " + currentUser;
+    document.getElementById('burger-btn').onclick = () => { document.getElementById('main-menu').classList.toggle('active'); };
+    
+    // Загрузка сторонних приложений (через кнопку "Установить .js")
+    document.getElementById('js-upload').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+        const name = file.name.replace(/\.[^/.]+$/, ""); 
+        apps['app_'+Date.now()] = { name: name, icon: '⚙️', code: ev.target.result };
+        localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+        loadCustomApps();
+        sysLog(`Установлено внешнее приложение: ${name}`);
+        alert(`Приложение "${name}" установлено!`);
+      };
+      reader.readAsText(file);
+      e.target.value = ''; 
+    };
+
+    // Загрузка обоев с устройства (ИСПРАВЛЕНО)
+    document.getElementById('file-upload').onchange = (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        state.bgType = 'image';
+        state.bgValue = ev.target.result; // Это код картинки (Base64)
+        save(); applySettings();
+        sysLog("Обои изменены (из файла)");
+      };
+      reader.readAsDataURL(file);
+      e.target.value = ''; // Сбрасываем инпут
+    };
+
+    setInterval(tick, 1000); tick();
+    
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-close]');
+      if (btn) document.getElementById(btn.getAttribute('data-close')).style.display = 'none';
+    });
+
+    sysLog(`Пользователь ${currentUser} вошел в систему`); 
+  }
+
+  // --- ЛОГИРОВАНИЕ ---
+  function sysLog(msg, isError = false) {
+    const time = new Date().toLocaleTimeString('ru-RU');
+    let logs = JSON.parse(localStorage.getItem(`sys_log_arr_${currentUser}`)) || [];
+    logs.push({ time, msg, isError });
+    if(logs.length > 25) logs = logs.slice(logs.length - 25); 
+    localStorage.setItem(`sys_log_arr_${currentUser}`, JSON.stringify(logs));
+    
+    let files = JSON.parse(localStorage.getItem(`fs_${currentUser}`)) || {};
+    let logFileId = Object.keys(files).find(id => files[id].name === 'system_log.txt');
+    if (!logFileId) { logFileId = 'sys_log_' + Date.now(); files[logFileId] = { name: 'system_log.txt', content: '', parent: 'root', type: 'file' }; }
+    files[logFileId].content = logs.map(l => `[${l.time}] ${l.isError?'ОШИБКА: ':''}${l.msg}`).join('\n');
+    localStorage.setItem(`fs_${currentUser}`, JSON.stringify(files));
+
+    updateLogWidget();
+  }
+
+  window.sysError = (msg) => {
+    sysLog(msg, true);
+    let files = JSON.parse(localStorage.getItem(`fs_${currentUser}`)) || {};
+    let errFileId = Object.keys(files).find(id => files[id].name === 'errors.txt');
+    if (!errFileId) { errFileId = 'sys_err_' + Date.now(); files[errFileId] = { name: 'errors.txt', content: '', parent: 'root', type: 'file' }; }
+    files[errFileId].content += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+    localStorage.setItem(`fs_${currentUser}`, JSON.stringify(files));
+    alert("Системная ошибка! Проверьте виджет логов.");
+  }
+
+  function updateLogWidget() {
+    const w = document.getElementById('log-widget');
+    if(!state.showLogWidget) { w.style.display = 'none'; return; }
+    w.style.display = 'block';
+    let logs = JSON.parse(localStorage.getItem(`sys_log_arr_${currentUser}`)) || [];
+    const last3 = logs.slice(-3); 
+    w.innerHTML = '<strong>Лог системы (последние 3):</strong><br>' + 
+      last3.map(l => `<div class="log-entry ${l.isError?'error':''}"><small>${l.time}</small> ${l.msg}</div>`).join('');
+  }
+
+  window.toggleLogWidget = (val) => { state.showLogWidget = val; save(); updateLogWidget(); }
+
+  // --- ФАЙЛОВАЯ СИСТЕМА ---
+  function initFileSystem() {
+    let files = JSON.parse(localStorage.getItem(`fs_${currentUser}`));
+    if (!files || Object.keys(files).length === 0) {
+      files = {
+        'default_1': { name: 'welcome.txt', type: 'file', parent: 'root', content: `Привет, ${currentUser}!\nЭто твое личное пространство.` },
+        'folder_1': { name: 'Мои Тексты', type: 'folder', parent: 'root' }
+      };
+      localStorage.setItem(`fs_${currentUser}`, JSON.stringify(files));
+    }
+  }
+
+  function updateFM() {
+    const list = document.getElementById('fm-list');
+    list.innerHTML = ''; 
+    selectedFmId = null; 
+    document.getElementById('fm-current-path').textContent = currentDir === 'root' ? '/root/' : `/${currentDir}/`;
+    
+    if (currentDir === 'root') {
+      const sysDiv = document.createElement('div');
+      sysDiv.className = 'list-item';
+      sysDiv.innerHTML = `<span>⚙️ <strong>system</strong></span>`;
+      sysDiv.onclick = (e) => selectFmItem('sys_folder', sysDiv, e);
+      sysDiv.ondblclick = () => { currentDir = 'system'; updateFM(); }; 
+      list.appendChild(sysDiv);
+    }
+
+    if (currentDir === 'system') {
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+      for(let id in apps) {
+        let div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `<span>${apps[id].icon} ${apps[id].name} (App)</span>`;
+        div.onclick = (e) => selectFmItem(id, div, e);
+        div.ondblclick = () => openAppInNote(id); 
+        list.appendChild(div);
+      }
+      return;
+    }
+
+    const files = JSON.parse(localStorage.getItem(`fs_${currentUser}`)) || {};
+    for(let id in files) {
+       if(files[id].parent !== currentDir) continue; 
+       let div = document.createElement('div');
+       div.className = 'list-item';
+       let icon = files[id].type === 'folder' ? '📁' : '📄';
+       div.innerHTML = `<span>${icon} ${files[id].name}</span>`;
+       div.onclick = (e) => selectFmItem(id, div, e);
+       
+       if(files[id].type === 'folder') {
+         div.ondblclick = () => { currentDir = id; updateFM(); }; 
+       } else {
+         div.ondblclick = () => openFile(id); 
+       }
+       list.appendChild(div);
+    }
+  }
+
+  window.selectFmItem = (id, el, e) => {
+    document.querySelectorAll('#fm-list .list-item').forEach(d => d.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedFmId = id;
+  }
+
+  window.goUpDir = () => {
+    if (currentDir === 'root') return; 
+    if (currentDir === 'system') { currentDir = 'root'; updateFM(); return; }
+    const files = JSON.parse(localStorage.getItem(`fs_${currentUser}`)) || {};
+    if(files[currentDir] && files[currentDir].parent) { currentDir = files[currentDir].parent; } 
+    else { currentDir = 'root'; }
+    updateFM();
+  }
+
+  window.createFMItem = (type) => {
+    if (currentDir === 'system') { sysError("Нельзя создавать файлы напрямую в системной папке."); return; }
+    const name = prompt(`Введите имя ${type === 'folder' ? 'папки' : 'файла'}:`);
+    if(!name) return;
+    const files = JSON.parse(localStorage.getItem(`fs_${currentUser}`)) || {};
+    files['item_'+Date.now()] = { name: type === 'file' ? name+'.txt' : name, type: type, parent: currentDir, content: '' };
+    localStorage.setItem(`fs_${currentUser}`, JSON.stringify(files));
+    sysLog(`Создан ${type}: ${name}`);
+    updateFM(); 
+  }
+
+  window.renameSelected = () => {
+    if(!selectedFmId) { alert("Выберите элемент!"); return; }
+    if(selectedFmId === 'sys_folder') { sysError("Системную папку нельзя переименовать!"); return; }
+    if(currentDir === 'system') { sysError("Имя приложения меняется в его коде/настройках."); return; }
+    
+    const files = JSON.parse(localStorage.getItem(`fs_${currentUser}`));
+    const newName = prompt("Новое имя:", files[selectedFmId].name);
+    if(newName) {
+      sysLog(`Файл/папка переименована: ${files[selectedFmId].name} -> ${newName}`);
+      files[selectedFmId].name = newName;
+      localStorage.setItem(`fs_${currentUser}`, JSON.stringify(files));
+      updateFM();
+    }
+  }
+
+  window.deleteSelected = () => {
+    if(!selectedFmId) { alert("Выберите элемент!"); return; }
+    if(selectedFmId === 'sys_folder') { sysError("Критическая ошибка: попытка удалить system!"); return; }
+    
+    if(confirm("Точно удалить?")) {
+      if(currentDir === 'system') {
+        const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)); 
+        sysLog(`Удалено приложение из system: ${apps[selectedFmId].name}`);
+        delete apps[selectedFmId]; 
+        localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps)); 
+        loadCustomApps(); 
+      } else {
+        const files = JSON.parse(localStorage.getItem(`fs_${currentUser}`));
+        sysLog(`Удален элемент ФС: ${files[selectedFmId].name}`);
+        delete files[selectedFmId]; 
+        localStorage.setItem(`fs_${currentUser}`, JSON.stringify(files));
+      }
+      updateFM();
+    }
+  }
+
+  // --- БЛОКНОТ ---
+  window.openFilePrompt = () => { alert("Чтобы открыть файл, сделайте двойной клик по нему в Файловом Менеджере."); }
+
+  window.openFile = (id) => {
+    const files = JSON.parse(localStorage.getItem(`fs_${currentUser}`));
+    const file = files[id];
+    currentFileEditingId = id;
+    editingApp = false;
+    noteModified = false;
+    
+    document.getElementById('note-title').textContent = 'Блокнот: ' + file.name;
+    document.getElementById('app-name-input').value = file.name;
+    document.getElementById('note-pad').value = file.content;
+    openWin('win-note'); 
+  };
+
+  window.openAppInNote = (id) => {
+    const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`));
+    const app = apps[id];
+    currentFileEditingId = id;
+    editingApp = true; 
+    noteModified = false;
+    
+    document.getElementById('note-title').textContent = 'Редактор App: ' + app.name;
+    document.getElementById('app-name-input').value = 'system/' + app.name + '.js';
+    document.getElementById('note-pad').value = app.code; 
+    openWin('win-note');
+    sysLog(`Открыт код приложения: ${app.name}`);
+  }
+
+  window.saveFileContent = () => {
+    if(!currentFileEditingId) { sysError("Нет открытого файла для сохранения."); return false; }
+    if (editingApp) {
+      if(!confirm("Внимание! Изменение системного приложения может привести к его поломке. Продолжить сохранение?")) return false;
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`));
+      apps[currentFileEditingId].code = document.getElementById('note-pad').value;
+      localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+      sysLog(`Изменен код приложения: ${apps[currentFileEditingId].name}`);
+    } else {
+      const files = JSON.parse(localStorage.getItem(`fs_${currentUser}`));
+      files[currentFileEditingId].content = document.getElementById('note-pad').value;
+      localStorage.setItem(`fs_${currentUser}`, JSON.stringify(files));
+      sysLog(`Файл сохранен: ${files[currentFileEditingId].name}`);
+    }
+    noteModified = false; 
+    alert('Сохранено!');
+    return true;
+  };
+
+  window.downloadCurrentFile = () => {
+    const text = document.getElementById('note-pad').value;
+    const name = document.getElementById('app-name-input').value || 'file.txt';
+    const blob = new Blob([text], { type: "text/plain" }); 
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = name; 
+    link.click(); 
+    sysLog(`Файл скачан: ${name}`);
+  }
+
+  window.closeNotepad = () => {
+    if (noteModified) {
+      if(confirm("Файл был изменен. Сохранить перед выходом?")) {
+        let saved = saveFileContent();
+        if(!saved) return; 
+      }
+    }
+    document.getElementById('win-note').style.display = 'none';
+    currentFileEditingId = null;
+    noteModified = false;
+  }
+
+  // --- APP BUILDER ---
+  window.openAppIDE = () => {
+    document.getElementById('ide-name').value = '';
+    document.getElementById('ide-icon').value = '';
+    document.getElementById('ide-title').value = '';
+    document.getElementById('ide-btn-text').value = '';
+    document.getElementById('ide-alert').value = '';
+    openWin('win-ide');
+  }
+
+  window.generateAndInstallApp = () => {
+    const name = document.getElementById('ide-name').value || 'Новое App';
+    const icon = document.getElementById('ide-icon').value || '🌟';
+    const bg = document.getElementById('ide-bg').value;
+    const title = document.getElementById('ide-title').value || 'Добро пожаловать!';
+    const btnText = document.getElementById('ide-btn-text').value || 'Клик!';
+    const alertMsg = document.getElementById('ide-alert').value || 'Работает!';
+
+    const code = `
+      <style>
+        body { margin:0; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background-color:${bg}; color:#333; }
+        button { padding:15px 30px; font-size:16px; border:none; border-radius:10px; background:#2b8cff; color:white; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1); }
+        button:active { transform: scale(0.95); }
+      </style>
+      <h2>${title}</h2>
+      <button onclick="alert('${alertMsg}')">${btnText}</button>
+    `;
+
+    const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+    apps['app_'+Date.now()] = { name, icon, code };
+    localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+    loadCustomApps(); 
+    
+    sysLog(`Создано приложение: ${name}`);
+    alert('Приложение успешно создано!');
+    document.getElementById('win-ide').style.display = 'none'; 
+  }
+
+  // --- РАБОЧИЙ СТОЛ И МЕНЕДЖЕР ПРИЛОЖЕНИЙ (С ПРАВАМИ АДМИНА) ---
+  window.loadCustomApps = () => {
+    const deskCont = document.getElementById('desktop-icons');
+    const mgrCont = document.getElementById('app-manager-list');
+    deskCont.innerHTML = ''; mgrCont.innerHTML = '';
+    
+    // 1. Отрисовка иконок на рабочем столе (Только МОИ приложения)
+    const myApps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+    for(let id in myApps) {
+      const deskIcon = document.createElement('div');
+      deskIcon.className = 'desk-icon';
+      deskIcon.innerHTML = `<div class="desk-icon-img">${myApps[id].icon}</div><div class="desk-icon-text">${myApps[id].name}</div>`;
+      deskIcon.onclick = () => runApp(id, myApps[id]); 
+      deskCont.appendChild(deskIcon);
+    }
+
+    // 2. Отрисовка списка в менеджере
+    // Если я Админ, я вижу приложения ВСЕХ пользователей
+    if (currentUser === 'Admin') {
+      usersList.forEach(user => {
+        const uApps = JSON.parse(localStorage.getItem(`apps_${user}`)) || {};
+        for(let id in uApps) {
+          addAppToManagerList(id, uApps[id], user, mgrCont);
+        }
+      });
+    } else {
+      // Иначе только свои
+      for(let id in myApps) {
+        addAppToManagerList(id, myApps[id], currentUser, mgrCont);
+      }
+    }
+  };
+
+  // Вспомогательная функция для добавления строчки в менеджер
+  function addAppToManagerList(id, app, owner, container) {
+      const mgrItem = document.createElement('div');
+      mgrItem.className = 'list-item';
+      // Добавляем тег с именем владельца, если мы Админ
+      const ownerTag = currentUser === 'Admin' ? `<small style="opacity:0.5"> [${owner}]</small>` : '';
+      mgrItem.innerHTML = `
+        <div style="flex:1" onclick="runApp('${id}', ${JSON.stringify(app).replace(/"/g, '&quot;')})">
+          ${app.icon} ${app.name} ${ownerTag}
+        </div>
+        <button class="btn" style="width:auto; padding:5px 10px; margin:0; background:var(--danger)" onclick="removeApp('${id}', '${owner}', event)">Удалить</button>
+      `;
+      container.appendChild(mgrItem);
+  }
+
+  // Удаление приложения (передаем владельца, чтобы Админ мог удалять чужое)
+  window.removeApp = (id, owner, e) => { 
+    if(e) e.stopPropagation(); 
+    if(!confirm(`Удалить приложение навсегда?`)) return;
+    
+    // Получаем базу данных того пользователя, чье приложение удаляем
+    const targetApps = JSON.parse(localStorage.getItem(`apps_${owner}`)); 
+    delete targetApps[id]; 
+    localStorage.setItem(`apps_${owner}`, JSON.stringify(targetApps)); 
+    
+    if (owner === currentUser) sysLog(`Приложение удалено: ${id}`);
+    loadCustomApps(); 
+  };
+
+  function runApp(id, app) {
+    let win = document.getElementById('run-'+id);
+    if(!win) {
+      win = document.createElement('div'); win.id = 'run-'+id; win.className = 'window';
+      win.style.cssText = "width:80%; height:60%; top:20%; left:10%; display:flex;";
+      
+      win.innerHTML = `
+        <div class="win-header"><span>${app.icon} ${app.name}</span><button class="ctrl-btn" onclick="this.closest('.window').remove()">✕</button></div>
+        <div class="win-content" style="padding:0;"><iframe id="frame-${id}" style="width:100%; height:100%; border:none; background:#fff;"></iframe></div>`;
+      document.body.appendChild(win);
+      
+      const doc = document.getElementById('frame-' + id).contentWindow.document;
+      doc.open(); doc.write(app.code); doc.close();
+      
+      initDrag(win); initResize(win); 
+    }
+    win.style.display = 'flex'; win.style.zIndex = ++highestZ;
+    document.getElementById('main-menu').classList.remove('active'); 
+  }
+
+  // --- НАСТРОЙКИ ---
+  function renderConfig() {
+    const a = document.getElementById('active-units'), h = document.getElementById('hidden-units');
+    a.innerHTML = ''; h.innerHTML = '';
+    state.infoLayout.forEach(id => a.appendChild(createUnit(id, true)));
+    state.hiddenLayout.forEach(id => h.appendChild(createUnit(id, false)));
+    document.getElementById('chk-log-widget').checked = state.showLogWidget;
+  }
+
+  function createUnit(id, active) {
+    const div = document.createElement('div'); div.className = `drag-item ${active ? '' : 'hidden'}`; div.textContent = labels[id];
+    div.onclick = () => {
+      if(active) { state.infoLayout = state.infoLayout.filter(x=>x!==id); state.hiddenLayout.push(id); }
+      else { state.hiddenLayout = state.hiddenLayout.filter(x=>x!==id); state.infoLayout.push(id); }
+      save(); applySettings(); renderConfig();
+    };
+    return div;
+  }
+
+  function tick() {
+    const bar = document.getElementById('info-bar'); const now = new Date();
+    const draw = (batt) => {
+      bar.innerHTML = '';
+      state.infoLayout.forEach(key => {
+        let v = '';
+        if(key==='hours') v = now.getHours().toString().padStart(2,'0'); 
+        if(key==='minutes') v = now.getMinutes().toString().padStart(2,'0');
+        if(key==='seconds') v = now.getSeconds().toString().padStart(2,'0');
+        if(key==='battery') v = `🔋${batt}%`;
+        if(key==='date') v = now.toLocaleDateString();
+        if(key==='weekday') v = now.toLocaleDateString('ru',{weekday:'short'});
+        bar.insertAdjacentHTML('beforeend', `<div class="info-unit">${v}</div>`);
+      });
+    };
+    if (navigator.getBattery) navigator.getBattery().then(b => draw(Math.floor(b.level*100))); else draw('--');
+  }
+
+  function applySettings() {
+    const root = document.documentElement, desk = document.getElementById('desktop');
+    const t = THEMES[state.themeId] || THEMES['t1'], f = FORMS[state.formId] || FORMS['f3'];
+    
+    root.style.setProperty('--accent', t.accent); root.style.setProperty('--win-bg-rgb', t.winRgb);
+    root.style.setProperty('--text', t.text); root.style.setProperty('--win-radius', f.win);
+    root.style.setProperty('--btn-radius', f.btn); root.style.setProperty('--blur', state.blur);
+    
+    if(state.bgType==='color') { desk.style.backgroundImage='none'; desk.style.backgroundColor=state.bgValue; }
+    else { desk.style.backgroundImage=`url(${state.bgValue})`; desk.style.backgroundColor='transparent'; }
+    
+    document.getElementById('sel-theme').value = state.themeId; document.getElementById('sel-form').value = state.formId;
+  }
+
+  // Новая функция: Установить обои по URL
+  window.setBgUrl = () => {
+    const url = document.getElementById('bg-url-input').value.trim();
+    if(!url) return alert("Введите ссылку!");
+    state.bgType = 'image';
+    state.bgValue = url;
+    save(); applySettings();
+    sysLog("Обои изменены (по ссылке)");
+  };
+
+  window.changeTheme = id => { state.themeId = id; save(); applySettings(); sysLog("Изменена тема"); };
+  window.changeForm = id => { state.formId = id; save(); applySettings(); };
+  window.toggleBlur = () => { state.blur = state.blur==='15px'?'0px':'15px'; save(); applySettings(); };
+  window.setSolidColor = (col) => { state.bgType = 'color'; state.bgValue = col; save(); applySettings(); };
+  
+  // Сохраняем настройки под текущим пользователем
+  function save() { localStorage.setItem(`websaos_config_${currentUser}`, JSON.stringify(state)); }
+
+  window.openWin = id => { const w = document.getElementById(id); w.style.display = 'flex'; w.style.zIndex = ++highestZ; };
+  
+  window.switchTab = (el, id) => {
+    document.querySelectorAll('.tab-content').forEach(c=>c.style.display='none');
+    document.querySelectorAll('.tab-link').forEach(l=>l.classList.remove('active'));
+    document.getElementById(id).style.display='block'; el.classList.add('active');
+  };
+
+  // Сброс теперь очищает вообще все (всю базу браузера) и перезагружает
+  window.fullReset = () => { if(confirm("ВНИМАНИЕ! Это удалит ВСЕХ пользователей и ВСЕ данные! Продолжить?")) { localStorage.clear(); location.reload(); }};
+
+  // --- ЛОГИКА ОКОН ---
+  function initDrag(win) {
+    const header = win.querySelector('.win-header');
+    if (!header) return;
+    header.onmousedown = header.ontouchstart = (e) => {
+      win.style.zIndex = ++highestZ; 
+      let startX = (e.clientX || e.touches[0].clientX) - win.offsetLeft; 
+      let startY = (e.clientY || e.touches[0].clientY) - win.offsetTop;
+      
+      document.onmousemove = document.ontouchmove = (ev) => {
+        let newX = (ev.clientX || ev.touches[0].clientX) - startX; 
+        let newY = (ev.clientY || ev.touches[0].clientY) - startY;
+        win.style.left = Math.max(0, Math.min(newX, window.innerWidth - 60)) + 'px'; 
+        win.style.top = Math.max(0, Math.min(newY, window.innerHeight - 60)) + 'px';
+      };
+      document.onmouseup = document.ontouchend = () => document.onmousemove = document.ontouchmove = null;
+    };
+  }
+
+  function initResize(win) {
+    let resizer = win.querySelector('.resize-handle');
+    if(!resizer) { resizer = document.createElement('div'); resizer.className = 'resize-handle'; win.appendChild(resizer); }
+    resizer.onmousedown = resizer.ontouchstart = (e) => {
+      e.stopPropagation(); win.style.zIndex = ++highestZ;
+      let startW = win.offsetWidth, startH = win.offsetHeight;
+      let startX = e.clientX || e.touches[0].clientX, startY = e.clientY || e.touches[0].clientY;
+      
+      document.onmousemove = document.ontouchmove = (ev) => {
+        win.style.width = Math.max(250, startW + ((ev.clientX || ev.touches[0].clientX) - startX)) + 'px'; 
+        win.style.height = Math.max(150, startH + ((ev.clientY || ev.touches[0].clientY) - startY)) + 'px';
+      };
+      document.onmouseup = document.ontouchend = () => document.onmousemove = document.ontouchmove = null;
+    };
+  }
+})();
+</script>
+</body>
+</html>
