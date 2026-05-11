@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>WebOS</title>
+<style>
+  :root{
+    --accent:#2b8cff;
+    --danger:#ff4d4d;
+    --bg:#0f1720;
+    --panel: rgba(255,255,255,0.06);
+    --glass: rgba(255,255,255,0.1);
+    --text:#e6eef8;
+  }
+  html,body{
+    height:100%; margin:0; overflow:hidden;
+    font-family:'Segoe UI', Roboto, sans-serif;
+    background:var(--bg); color:var(--text);
+    user-select:none;
+  }
+  
+  /* Desktop */
+  .desktop{
+    position:relative; width:100%; height:100vh;
+    background-size:cover; background-position:center;
+    background-image: linear-gradient(45deg, #0f1720, #1a2a3a);
+  }
+
+  /* Taskbar */
+  .taskbar{
+    position:fixed; left:50%; bottom:15px; transform: translateX(-50%);
+    height:60px; display:flex; align-items:center; gap:10px; padding:0 15px;
+    background: rgba(15, 23, 32, 0.8); backdrop-filter: blur(15px);
+    border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); z-index:1000;
+  }
+
+  .icon-btn {
+    width:42px; height:42px; border-radius:10px; background:var(--panel);
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px; cursor:pointer; transition: 0.2s;
+  }
+  .icon-btn:hover { background: var(--accent); transform: translateY(-5px); }
+
+  /* Window System */
+  .window{
+    position:absolute; background: #161f29; border-radius:12px;
+    border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    display:none; flex-direction:column; min-width:300px; z-index:500;
+  }
+  .win-header {
+    padding:10px 15px; background: rgba(255,255,255,0.03);
+    display:flex; justify-content:space-between; align-items:center;
+    cursor: move; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .win-content { padding:15px; flex:1; overflow:auto; }
+
+  /* UI Elements */
+  .btn {
+    padding:8px 15px; border-radius:6px; border:none; cursor:pointer;
+    font-weight:600; font-size:13px; color:white; background:var(--accent);
+  }
+  .btn-danger { background: var(--danger); }
+  .btn-ghost { background: rgba(255,255,255,0.1); }
+  
+  textarea {
+    width:100%; height:200px; background: rgba(0,0,0,0.2);
+    color:white; border:1px solid var(--panel); border-radius:8px;
+    padding:10px; resize:none; font-family: monospace;
+  }
+
+  .file-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap:10px;
+  }
+  .file-item {
+    display:flex; flex-direction:column; align-items:center; padding:10px;
+    border-radius:8px; cursor:pointer; font-size:11px; text-align:center;
+  }
+  .file-item:hover { background: var(--panel); }
+</style>
+</head>
+<body>
+
+<div id="desktop" class="desktop"></div>
+
+<div class="taskbar" id="taskbar">
+  <div class="icon-btn" onclick="toggleWin('win-fm')">📁</div>
+  <div class="icon-btn" onclick="toggleWin('win-note')">📝</div>
+  <div class="icon-btn" onclick="toggleWin('win-settings')">⚙️</div>
+</div>
+
+<div id="win-fm" class="window" style="width:500px; top:10%; left:10%;">
+  <div class="win-header"><span>Проводник</span><button class="btn-ghost" onclick="toggleWin('win-fm')">✕</button></div>
+  <div class="win-content">
+    <div style="margin-bottom:10px;">
+      <button class="btn" onclick="document.getElementById('installInput').click()">📦 Установить .js</button>
+      <input type="file" id="installInput" hidden accept=".js" onchange="handleInstall(this)">
+    </div>
+    <div id="fm-list" class="file-grid"></div>
+  </div>
+</div>
+
+<div id="win-note" class="window" style="width:400px; top:15%; left:15%;">
+  <div class="win-header"><span>Блокнот</span><button class="btn-ghost" onclick="toggleWin('win-note')">✕</button></div>
+  <div class="win-content">
+    <textarea id="note-area" placeholder="Начните писать здесь..."></textarea>
+    <button class="btn" style="margin-top:10px;" onclick="saveNote()">Сохранить в ЛС</button>
+  </div>
+</div>
+
+<div id="win-settings" class="window" style="width:350px; top:20%; left:20%;">
+  <div class="win-header"><span>Настройки</span><button class="btn-ghost" onclick="toggleWin('win-settings')">✕</button></div>
+  <div class="win-content">
+    <label>Тема фона (URL):</label>
+    <input type="text" id="bg-input" style="width:100%; margin:10px 0; padding:5px;">
+    <button class="btn" onclick="applyBg()">Применить</button>
+    <hr style="opacity:0.1; margin:20px 0;">
+    <h4 style="color:var(--danger)">Опасная зона</h4>
+    <p style="font-size:11px; opacity:0.6;">Это удалит все ваши данные и настройки.</p>
+    <button class="btn btn-danger" onclick="fullReset()">Полный сброс системы</button>
+  </div>
+</div>
+
+<script>
+  // --- Ядро системы ---
+  const state = {
+    bg: localStorage.getItem('os_bg') || '',
+    files: JSON.parse(localStorage.getItem('os_files')) || [
+      {name: 'readme.txt', type: 'text'},
+      {name: 'system.sys', type: 'file'}
+    ]
+  };
+
+  function init() {
+    if(state.bg) document.getElementById('desktop').style.backgroundImage = `url(${state.bg})`;
+    document.getElementById('note-area').value = localStorage.getItem('os_note') || '';
+    renderFM();
+  }
+
+  function toggleWin(id) {
+    const win = document.getElementById(id);
+    win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
+  }
+
+  // --- Блокнот ---
+  function saveNote() {
+    const text = document.getElementById('note-area').value;
+    localStorage.setItem('os_note', text);
+    alert('Заметка сохранена!');
+  }
+
+  // --- Настройки ---
+  function applyBg() {
+    const url = document.getElementById('bg-input').value;
+    localStorage.setItem('os_bg', url);
+    location.reload();
+  }
+
+  function fullReset() {
+    if(confirm('Вы уверены? Все данные будут стерты!')) {
+      localStorage.clear();
+      location.reload();
+    }
+  }
+
+  // --- Файловый менеджер и Модульность ---
+  function renderFM() {
+    const container = document.getElementById('fm-list');
+    container.innerHTML = '';
+    state.files.forEach(f => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `<div>${f.type === 'text' ? '📄' : '⚙️'}</div><div>${f.name}</div>`;
+      container.appendChild(item);
+    });
+  }
+
+  function handleInstall(input) {
+    const file = input.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const code = e.target.result;
+      try {
+        // Выполняем код модуля
+        const script = document.createElement('script');
+        script.textContent = code;
+        document.body.appendChild(script);
+        
+        // Добавляем в список файлов
+        state.files.push({name: file.name, type: 'module'});
+        localStorage.setItem('os_files', JSON.stringify(state.files));
+        renderFM();
+        
+        alert(`Приложение ${file.name} успешно установлено!`);
+      } catch (err) {
+        alert('Ошибка при установке модуля: ' + err);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Запуск
+  init();
+
+  // Простейшее перетаскивание окон
+  document.querySelectorAll('.win-header').forEach(header => {
+    header.onmousedown = function(e) {
+      const win = header.parentElement;
+      let shiftX = e.clientX - win.getBoundingClientRect().left;
+      let shiftY = e.clientY - win.getBoundingClientRect().top;
+      
+      document.onmousemove = function(e) {
+        win.style.left = e.clientX - shiftX + 'px';
+        win.style.top = e.clientY - shiftY + 'px';
+      };
+      
+      document.onmouseup = function() {
+        document.onmousemove = null;
+        header.onmouseup = null;
+      };
+    };
+  });
+</script>
+</body>
+</html>
