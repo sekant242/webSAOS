@@ -7,6 +7,10 @@
 ## Версии до 2.0
 
 - [1.12.5](https://sekant242.github.io/webSAOS/old/1.12.5.html)
+-
+[1.12.4](https://sekant242.github.io/webSAOS/old/1.12.4.html)
+-
+[1.12.3](https://sekant242.github.io/webSAOS/old/1.12.3.html)
 - [1.12.2](https://sekant242.github.io/webSAOS/old/1.12.2.html)
 - [1.12.1](https://sekant242.github.io/webSAOS/old/1.12.1.html)
 - [1.12](https://sekant242.github.io/webSAOS/old/1.12.html)
