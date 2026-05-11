@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS</title>
+
+<style>
+  /* Глобальные переменные системы */
+  :root {
+    --accent: #2b8cff;
+    --danger: #ff4d4d;
+    --text: #e6eef8;
+    --win-bg-rgb: 22, 31, 41;
+    --win-opacity: 0.85;
+    --glass-blur: 15px;
+    --win-radius: 16px;
+    --btn-radius: 10px;
+    --blur: 0px;
+  }
+
+  * { box-sizing: border-box; -webkit-touch-callout: none; font-family: system-ui, sans-serif; transition: border-radius 0.3s, background 0.3s, color 0.3s; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: #000; color: var(--text); user-select: none; }
+  
+  /* Экран входа (Обновленный) */
+  #login-screen { position: fixed; inset: 0; background: rgba(10, 15, 20, 0.95); backdrop-filter: blur(20px); z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .login-box { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.8); width: 350px; max-width: 90%; }
+  .users-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; max-height: 200px; overflow-y: auto; }
+  .user-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--btn-radius); padding: 10px; width: 80px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
+  .user-card:hover { transform: translateY(-5px); border-color: var(--accent); background: rgba(43, 140, 255, 0.2); }
+  .user-icon { font-size: 30px; margin-bottom: 5px; }
+  .user-name { font-size: 11px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  
+  /* Контекстное меню (ПКМ) */
+  #context-menu { position: fixed; background: rgba(30, 30, 30, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 5px; display: none; flex-direction: column; z-index: 99999; box-shadow: 0 5px 15px rgba(0,0,0,0.5); min-width: 150px; }
+  .cm-item { padding: 10px 15px; font-size: 13px; cursor: pointer; border-radius: 5px; color: white; display: flex; gap: 10px; align-items: center; }
+  .cm-item:hover { background: var(--accent); }
+
+  /* Рабочий стол и иконки */
+  .desktop { position: fixed; inset: 0; background-size: cover; background-position: center; filter: blur(var(--blur)); z-index: 1; }
+  .desktop-icons { position: fixed; top: 0; left: 0; width: 100%; height: calc(100% - 120px); padding: 20px; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 20px; z-index: 10; pointer-events: none; }
+  .desk-icon { width: 64px; display: flex; flex-direction: column; align-items: center; cursor: grab; pointer-events: auto; position: relative; }
+  .desk-icon:active { cursor: grabbing; opacity: 0.8; }
+  .desk-icon-img { width: 54px; height: 54px; background: rgba(128,128,128,0.3); backdrop-filter: blur(5px); border-radius: var(--btn-radius); display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); pointer-events: none; }
+  .desk-icon-text { font-size: 11px; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.8); color: #fff; word-break: break-word; font-weight: 500; pointer-events: none; }
+  
+  /* Стиль для папки, когда над ней держат иконку */
+  .desk-icon.folder-drag-over .desk-icon-img { border: 2px dashed var(--accent); transform: scale(1.1); background: rgba(43, 140, 255, 0.3); }
+
+  /* Панель задач */
+  .taskbar-container { position: fixed; bottom: 100px; left: 20px; z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .taskbar { display: none; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); padding: 12px; border-radius: var(--win-radius); border: 1px solid rgba(128,128,128,0.2); flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .taskbar.active { display: flex; }
+  .burger { width: 55px; height: 55px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.4); z-index: 10000; }
+  .icon-btn { width: 48px; height: 48px; border-radius: var(--btn-radius); background: rgba(128,128,128,0.15); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; }
+
+  /* Виджет логов */
+  #log-widget { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-radius: var(--btn-radius); padding: 10px; font-size: 11px; width: 250px; z-index: 50; display: none; border: 1px solid rgba(255,255,255,0.1); pointer-events: none; }
+  .log-entry { margin-bottom: 5px; color: #aaa; }
+  .log-entry.error { color: var(--danger); font-weight: bold; }
+
+  /* Окна и элементы */
+  .window { position: absolute; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); border-radius: var(--win-radius); border: 1px solid rgba(128,128,128,0.2); display: none; flex-direction: column; overflow: hidden; z-index: 500; min-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .win-header { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: rgba(128,128,128,0.1); cursor: move; border-bottom: 1px solid rgba(128,128,128,0.1); }
+  .ctrl-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(128,128,128,0.2); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .win-content { flex: 1; overflow: auto; padding: 15px; display: flex; flex-direction: column; }
+  .resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%); border-bottom-right-radius: var(--win-radius); z-index: 10; touch-action: none; }
+  .info-bar { position: fixed; bottom: 25px; left: 0; width: 100%; display: flex; justify-content: center; gap: 8px; font-size: 11px; z-index: 9998; pointer-events: none; }
+  .info-unit { background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); padding: 5px 12px; border-radius: var(--btn-radius); border: 1px solid rgba(128,128,128,0.2); }
+  .toolbar { display: flex; gap: 5px; padding-bottom: 10px; border-bottom: 1px solid rgba(128,128,128,0.2); margin-bottom: 10px; overflow-x: auto; flex-shrink: 0; }
+  .toolbar .btn { width: auto; padding: 8px 12px; margin: 0; font-size: 12px; font-weight: normal; background: rgba(128,128,128,0.2); }
+  .toolbar .btn:hover { background: var(--accent); }
+  .list-item { padding: 10px; background: rgba(128,128,128,0.05); border-radius: var(--btn-radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; cursor: pointer; border: 1px solid transparent; }
+  .list-item:hover { background: rgba(128,128,128,0.15); }
+  .list-item.selected { border-color: var(--accent); background: rgba(43, 140, 255, 0.2); }
+  textarea, input[type="text"], input[type="password"], input[type="color"], select { width: 100%; padding: 12px; background: rgba(128,128,128,0.1); border: 1px solid rgba(128,128,128,0.3); color: var(--text); border-radius: var(--btn-radius); margin-bottom: 10px; font-size: 14px; outline: none; }
+  .btn { padding: 12px; border-radius: var(--btn-radius); border: none; background: var(--accent); color: white; width: 100%; font-weight: bold; cursor: pointer; margin: 5px 0; }
+  .config-zone { background: rgba(128,128,128,0.1); padding: 10px; border-radius: var(--btn-radius); display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; border: 1px dashed rgba(128,128,128,0.3); min-height: 50px; }
+  .drag-item { background: var(--accent); padding: 6px 14px; border-radius: var(--btn-radius); font-size: 12px; cursor: pointer; color: #fff; }
+  .drag-item.hidden { background: rgba(128,128,128,0.3); opacity: 0.7; color: var(--text); }
+  .tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(128,128,128,0.2); overflow-x: auto; padding-bottom: 5px; flex-shrink: 0; }
+  .tab-link { padding: 8px 15px; font-size: 13px; opacity: 0.5; white-space: nowrap; cursor: pointer; border-radius: var(--btn-radius); }
+  .tab-link.active { opacity: 1; background: rgba(128,128,128,0.2); color: var(--accent); }
+  
+  /* Сетка внутри окна папки */
+  .folder-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h2>WebSAOS</h2>
+    <p style="font-size:12px; opacity:0.7; margin-top:-10px;">Выберите профиль для входа</p>
+    
+    <div id="users-grid" class="users-grid"></div>
+    
+    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+    <p style="font-size:12px; font-weight:bold; cursor:pointer; color:var(--accent)" onclick="toggleNewUserForm()">+ Создать нового пользователя</p>
+    
+    <div id="new-user-form" style="display:none; text-align:left;">
+      <input type="text" id="new-u-name" placeholder="Имя профиля">
+      <input type="text" id="new-u-icon" placeholder="Эмодзи иконка (напр. 🐱)" value="👤">
+      <input type="password" id="new-u-pass" placeholder="Пароль (необязательно)">
+      <button class="btn" onclick="createNewUser()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<div id="context-menu">
+  <div class="cm-item" onclick="createNewFolder()">📁 Создать папку</div>
+  <div class="cm-item" onclick="openWin('win-settings')">⚙️ Настройки экрана</div>
+</div>
+
+<div id="app-context-menu" class="context-menu" style="display:none; position:fixed; background:rgba(30,30,30,0.95); padding:5px; border-radius:8px; z-index:99999; border:1px solid rgba(255,255,255,0.2);">
+  <div class="cm-item" onclick="moveAppToDesktop()">Вырвать на Рабочий стол</div>
+</div>
+
+<div id="desktop" class="desktop" ondragover="event.preventDefault()" ondrop="dropToDesktop(event)"></div>
+<div id="desktop-icons" class="desktop-icons"></div>
+<div id="info-bar" class="info-bar"></div> <div id="log-widget"></div>
+
+<input type="file" id="file-upload" accept="image/*" style="display:none">
+<input type="file" id="js-upload" accept=".js,.txt" style="display:none">
+
+<div class="taskbar-container">
+  <div class="taskbar" id="main-menu">
+    <div class="icon-btn" onclick="openWin('win-app-manager')" title="Менеджер">📦</div>
+    <div class="icon-btn" onclick="openWin('win-fm')" title="Файлы">📁</div>
+    <div class="icon-btn" onclick="openAppIDE()" title="Создать App">✨</div>
+    <div class="icon-btn" onclick="openWin('win-settings')" title="Настройки">⚙️</div>
+    <div class="icon-btn" onclick="logout()" title="Сменить профиль" style="background: rgba(255, 77, 77, 0.3);">🚪</div>
+  </div>
+  <div class="burger" id="burger-btn">📱</div> 
+</div>
+
+<div id="win-settings" class="window" style="width:90%; height:85%; top:5%; left:5%;">
+  <div class="win-header">
+    <span>Настройки</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-settings">✕</button>
+  </div>
+  <div class="win-content">
+    <div class="tabs">
+      <div class="tab-link active" onclick="switchTab(this, 'tab-desk')">Экран</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-profile')">Профиль</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-theme')">Стиль</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-system')">Система</div>
+    </div>
+    
+    <div id="tab-desk" class="tab-content">
+      <label style="font-size:12px; opacity:0.7">Установить обои (Файл):</label>
+      <button class="btn" style="background:rgba(128,128,128,0.2); color:var(--text); margin-bottom:15px;" onclick="document.getElementById('file-upload').click()">🖼 Выбрать фото с устройства</button>
+      <label style="font-size:12px; opacity:0.7">Установить обои (URL):</label>
+      <div style="display:flex; gap:5px; margin-bottom:15px;">
+        <input type="text" id="bg-url-input" placeholder="https://..." style="margin:0;">
+        <button class="btn" style="width:auto; margin:0; padding: 0 20px;" onclick="setBgUrl()">ОК</button>
+      </div>
+      <label style="font-size:12px; opacity:0.7">Цвет фона:</label>
+      <input type="color" id="bg-color-pick" onchange="setSolidColor(this.value)" style="height:40px; border:none; background:none; cursor:pointer;">
+      <button class="btn" onclick="toggleBlur()" style="background:rgba(128,128,128,0.2); color:var(--text)">Вкл/Выкл Блюр</button>
+    </div>
+
+    <div id="tab-profile" class="tab-content" style="display:none">
+      <p style="margin-top:0">Настройки аккаунта</p>
+      <label style="font-size:12px; opacity:0.7">Иконка профиля (Эмодзи):</label>
+      <input type="text" id="set-prof-icon" maxlength="2">
+      <label style="font-size:12px; opacity:0.7">Новый пароль (оставь пустым, чтобы убрать):</label>
+      <input type="password" id="set-prof-pass">
+      <button class="btn" onclick="saveProfile()">💾 Сохранить изменения</button>
+    </div>
+
+    <div id="tab-theme" class="tab-content" style="display:none">
+      <label style="font-size:12px">Цветовая тема:</label>
+      <select id="sel-theme" onchange="changeTheme(this.value)">
+        <option value="t1">1. Тёмная классика</option>
+        <option value="t2">2. Светлый день</option>
+        <option value="t3">3. Хакер</option>
+        <option value="t4">4. Неон</option>
+      </select>
+      <label style="font-size:12px">Форма интерфейса:</label>
+      <select id="sel-form" onchange="changeForm(this.value)">
+        <option value="f1">1. Квадратная</option>
+        <option value="f2">2. Острая</option>
+        <option value="f3">3. Стандартная</option>
+        <option value="f4">4. Плавная</option>
+        <option value="f5">5. Круглая</option>
+      </select>
+    </div>
+
+    <div id="tab-system" class="tab-content" style="display:none">
+      <label style="font-size:11px">ВИДЖЕТЫ (клик для скрытия/показа):</label>
+      <div id="active-units" class="config-zone"></div>
+      <div id="hidden-units" class="config-zone"></div>
+      <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; margin-top:10px;">
+        <input type="checkbox" id="chk-log-widget" onchange="toggleLogWidget(this.checked)" style="width:auto; margin:0;">Показать Логи
+      </label>
+      <hr style="border:0; border-top:1px solid rgba(128,128,128,0.2); margin: 15px 0;">
+      <h3 style="margin-top:0">WebSAOS 2.0</h3>
+      <p id="cur-user" style="font-weight:bold"></p>
+      <button class="btn" style="background:var(--danger); margin-top:20px;" onclick="fullReset()">Сбросить всё (Удалить всех юзеров)</button>
+    </div>
+  </div>
+</div>
+
+<div id="win-desk-folder" class="window" style="width:300px; height:350px; top:20%; left:20%;">
+  <div class="win-header">
+    <span id="desk-folder-title">Папка</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-desk-folder">✕</button>
+  </div>
+  <div class="win-content" style="padding:0; background:rgba(0,0,0,0.2);">
+    <div id="desk-folder-content" class="folder-grid" ondragover="event.preventDefault()" ondrop="dropToFolder(event, currentOpenDeskFolder)"></div>
+  </div>
+</div>
+
+<div id="win-app-manager" class="window" style="width:85%; height:75%; top:10%; left:7%;"><div class="win-header"><span>Менеджер Приложений</span><button class="ctrl-btn" style="background:var(--danger)" data-close="win-app-manager">✕</button></div><div class="win-content"><button class="btn" onclick="document.getElementById('js-upload').click()" style="margin-bottom:15px;">📥 Установить .js</button><div id="app-manager-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column;"></div></div></div>
+<div id="win-note" class="window" style="width:90%; height:80%; top:5%; left:5%;"><div class="win-header"><span id="note-title">Блокнот</span><button class="ctrl-btn" style="background:var(--danger)" onclick="closeNotepad()">✕</button></div><div class="win-content" style="padding: 10px;"><div class="toolbar" id="note-toolbar"><button class="btn" onclick="openFilePrompt()">📂 Открыть</button><button class="btn" onclick="saveFileContent()">💾 Сохранить</button><button class="btn" onclick="downloadCurrentFile()">⬇️ Скачать</button></div><input type="text" id="app-name-input" placeholder="Имя файла..." readonly style="margin-bottom:5px;"><textarea id="note-pad" style="flex:1; margin:0;" placeholder="Текст файла..." oninput="noteModified = true"></textarea></div></div>
+<div id="win-ide" class="window" style="width:90%; height:80%; top:5%; left:5%;"><div class="win-header"><span>App Builder</span><button class="ctrl-btn" style="background:var(--danger)" data-close="win-ide">✕</button></div><div class="win-content"><input type="text" id="ide-name" placeholder="Название"><input type="text" id="ide-icon" placeholder="Эмодзи"><label style="font-size:12px;">Цвет фона:</label><input type="color" id="ide-bg" value="#ffffff" style="height:40px; border:none; background:none; cursor:pointer;"><input type="text" id="ide-title" placeholder="Заголовок"><input type="text" id="ide-btn-text" placeholder="Текст кнопки"><input type="text" id="ide-alert" placeholder="Сообщение"><button class="btn" onclick="generateAndInstallApp()">🚀 Создать</button></div></div>
+<div id="win-fm" class="window" style="width:85%; height:75%; top:10%; left:7%;"><div class="win-header"><span>Файлы</span><button class="ctrl-btn" style="background:var(--danger)" data-close="win-fm">✕</button></div><div class="win-content"><div class="toolbar"><button class="btn" onclick="createFMItem('file')">📄 Файл</button><button class="btn" onclick="createFMItem('folder')">📁 Папка</button><button class="btn" onclick="renameSelected()">✏️ Имя</button><button class="btn" style="color:var(--danger)" onclick="deleteSelected()">🗑 Удал</button></div><div style="font-size:12px; margin-bottom:10px; opacity:0.8; display:flex; align-items:center; gap:10px;"><button class="btn" style="width:auto; padding:3px 8px; margin:0;" onclick="goUpDir()">⬅ Назад</button><span id="fm-current-path">/root/</span></div><div id="fm-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column;"></div></div></div>
+
+<script>
+(function() {
+  let highestZ = 1000;
+  const labels = { hours:'Часы', minutes:'Мин', seconds:'Сек', battery:'Заряд', date:'Дата', weekday:'День' };
+  
+  const THEMES = {
+    t1: { accent: '#2b8cff', winRgb: '22, 31, 41', text: '#e6eef8' },
+    t2: { accent: '#0066cc', winRgb: '240, 240, 245', text: '#1a1a1a' },
+    t3: { accent: '#00ff00', winRgb: '0, 0, 0', text: '#00ff00' },
+    t4: { accent: '#ff00ff', winRgb: '30, 10, 40', text: '#00ffff' }
+  };
+  const FORMS = { f1: { win: '0px', btn: '0px' }, f2: { win: '8px', btn: '4px' }, f3: { win: '16px', btn: '10px' }, f4: { win: '24px', btn: '16px' }, f5: { win: '32px', btn: '24px' } };
+
+  // --- БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ (ОБЪЕКТЫ) ---
+  let usersData = {}; 
+  let currentUser = '';
+  let state = {};
+
+  let currentDir = 'root'; 
+  let selectedFmId = null; 
+  let currentFileEditingId = null; 
+  let noteModified = false; 
+  let editingApp = false; 
+  let currentOpenDeskFolder = null; // Какая папка на раб. столе открыта
+  let targetContextMenuApp = null; // Для меню вытаскивания из папки
+
+  // --- ЗАГРУЗКА И ЭКРАН ВХОДА ---
+  window.onload = () => {
+    // Читаем базу пользователей. Если её нет - создаем Админа
+    usersData = JSON.parse(localStorage.getItem('websaos_users_data'));
+    if (!usersData) {
+        usersData = { 'Admin': { icon: '👑', pass: '' } };
+        localStorage.setItem('websaos_users_data', JSON.stringify(usersData));
+    }
+    renderUsersGrid();
+  };
+
+  // Рисует карточки пользователей
+  function renderUsersGrid() {
+    const grid = document.getElementById('users-grid');
+    grid.innerHTML = '';
+    for(let username in usersData) {
+        let u = usersData[username];
+        let card = document.createElement('div');
+        card.className = 'user-card';
+        // Если есть пароль, рисуем замочек
+        card.innerHTML = `<div class="user-icon">${u.icon}</div><div class="user-name">${username} ${u.pass ? '🔒' : ''}</div>`;
+        card.onclick = () => attemptLogin(username, u.pass);
+        grid.appendChild(card);
+    }
+  }
+
+  // Попытка входа (с проверкой пароля)
+  window.attemptLogin = (username, hasPass) => {
+      if (hasPass) {
+          const pass = prompt(`Введите пароль для ${username}:`);
+          if (pass !== hasPass) return alert("Неверный пароль!");
+      }
+      currentUser = username;
+      document.getElementById('login-screen').style.display = 'none';
+      loadUserState();
+  }
+
+  // Показать/скрыть форму создания юзера
+  window.toggleNewUserForm = () => {
+      const form = document.getElementById('new-user-form');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  // Создание нового пользователя
+  window.createNewUser = () => {
+      const name = document.getElementById('new-u-name').value.trim();
+      const icon = document.getElementById('new-u-icon').value || '👤';
+      const pass = document.getElementById('new-u-pass').value;
+
+      if (!name) return alert('Введите имя!');
+      if (usersData[name]) return alert('Пользователь уже существует!');
+
+      usersData[name] = { icon, pass };
+      localStorage.setItem('websaos_users_data', JSON.stringify(usersData));
+      
+      document.getElementById('new-u-name').value = '';
+      document.getElementById('new-u-pass').value = '';
+      toggleNewUserForm();
+      renderUsersGrid(); // Обновляем список
+  }
+
+  window.logout = () => {
+      document.getElementById('main-menu').classList.remove('active');
+      document.getElementById('login-screen').style.display = 'flex';
+      renderUsersGrid();
+  }
+
+  // --- ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ ДЛЯ КОНКРЕТНОГО ЮЗЕРА ---
+  function loadUserState() {
+    state = JSON.parse(localStorage.getItem(`websaos_config_${currentUser}`)) || {
+      bgType: 'image', bgValue: '', themeId: 't1', formId: 'f3', blur: '0px',
+      infoLayout: ['hours', 'minutes', 'battery'], hiddenLayout: ['seconds', 'date', 'weekday'], showLogWidget: false 
+    };
+
+    // Заполняем вкладку "Профиль" в настройках
+    document.getElementById('set-prof-icon').value = usersData[currentUser].icon;
+    document.getElementById('set-prof-pass').value = usersData[currentUser].pass;
+
+    applySettings(); 
+    renderConfig(); 
+    updateFM(); 
+    renderDesktop(); // Заменили loadCustomApps на renderDesktop (для папок)
+    updateLogWidget(); 
+    
+    document.querySelectorAll('.window').forEach(win => { initDrag(win); initResize(win); });
+    document.getElementById('cur-user').textContent = "Профиль: " + currentUser;
+    document.getElementById('burger-btn').onclick = () => { document.getElementById('main-menu').classList.toggle('active'); };
+    
+    setInterval(tick, 1000); tick();
+    sysLog(`Пользователь ${currentUser} вошел в систему`); 
+  }
+
+  // Сохранение изменений профиля (из Настроек)
+  window.saveProfile = () => {
+      const newIcon = document.getElementById('set-prof-icon').value || '👤';
+      const newPass = document.getElementById('set-prof-pass').value;
+      usersData[currentUser].icon = newIcon;
+      usersData[currentUser].pass = newPass;
+      localStorage.setItem('websaos_users_data', JSON.stringify(usersData));
+      alert("Профиль обновлен!");
+  }
+
+  // --- DRAG & DROP И ПАПКИ НА РАБОЧЕМ СТОЛЕ ---
+
+  // Контекстное меню рабочего стола
+  const desktopEl = document.getElementById('desktop');
+  const contextMenu = document.getElementById('context-menu');
+  const appContextMenu = document.getElementById('app-context-menu');
+
+  // Закрываем меню при клике куда угодно
+  document.addEventListener('click', () => { contextMenu.style.display = 'none'; appContextMenu.style.display = 'none'; });
+  
+  // Клик правой кнопкой (ПКМ) по рабочему столу
+  desktopEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      contextMenu.style.display = 'flex';
+      contextMenu.style.left = e.clientX + 'px';
+      contextMenu.style.top = e.clientY + 'px';
+  });
+
+  // Создать папку на рабочем столе
+  window.createNewFolder = () => {
+      const name = prompt("Имя новой папки:");
+      if (!name) return;
+      const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+      folders['df_' + Date.now()] = { name: name };
+      localStorage.setItem(`desk_folders_${currentUser}`, JSON.stringify(folders));
+      sysLog(`Создана папка на столе: ${name}`);
+      renderDesktop();
+  }
+
+  // Отрисовка Рабочего стола (Папки + Приложения)
+  window.renderDesktop = () => {
+    const deskCont = document.getElementById('desktop-icons');
+    const folderCont = document.getElementById('desk-folder-content');
+    deskCont.innerHTML = ''; 
+    if (folderCont) folderCont.innerHTML = ''; // Очищаем открытую папку, если есть
+    
+    // 1. Отрисовка Папок
+    const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+    for(let fId in folders) {
+        const f = folders[fId];
+        const folderIcon = document.createElement('div');
+        folderIcon.className = 'desk-icon';
+        folderIcon.innerHTML = `<div class="desk-icon-img">📁</div><div class="desk-icon-text">${f.name}</div>`;
+        folderIcon.onclick = () => openDeskFolder(fId, f.name);
+        
+        // Настройки Drag & Drop (Папка принимает иконки)
+        folderIcon.ondragover = (e) => { e.preventDefault(); folderIcon.classList.add('folder-drag-over'); }
+        folderIcon.ondragleave = () => folderIcon.classList.remove('folder-drag-over');
+        folderIcon.ondrop = (e) => { folderIcon.classList.remove('folder-drag-over'); dropToFolder(e, fId); }
+        
+        deskCont.appendChild(folderIcon);
+    }
+
+    // 2. Отрисовка Приложений
+    const myApps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+    for(let id in myApps) {
+      const app = myApps[id];
+      const appIcon = document.createElement('div');
+      appIcon.className = 'desk-icon';
+      appIcon.draggable = true; // Делаем перетаскиваемым!
+      appIcon.innerHTML = `<div class="desk-icon-img">${app.icon}</div><div class="desk-icon-text">${app.name}</div>`;
+      
+      // Начать перетаскивание
+      appIcon.ondragstart = (e) => { e.dataTransfer.setData('text/plain', id); }
+      // Клик - запуск
+      appIcon.onclick = () => runApp(id, app);
+      
+      // Решаем, куда поместить иконку: на стол или в открытую папку
+      if (app.deskFolderId) {
+          // Если приложение принадлежит какой-то папке
+          if (currentOpenDeskFolder === app.deskFolderId && folderCont) {
+              // Если эта папка сейчас открыта, рисуем внутри
+              
+              // Добавляем ПКМ для извлечения из папки
+              appIcon.addEventListener('contextmenu', (e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  targetContextMenuApp = id;
+                  appContextMenu.style.display = 'flex';
+                  appContextMenu.style.left = e.clientX + 'px';
+                  appContextMenu.style.top = e.clientY + 'px';
+              });
+              
+              folderCont.appendChild(appIcon);
+          }
+      } else {
+          // Иначе рисуем просто на рабочем столе
+          deskCont.appendChild(appIcon);
+      }
+    }
+    
+    updateAppManagerList(myApps); // Обновляем менеджер (Код вынесен в функцию ниже)
+  };
+
+  // Открыть окно папки
+  window.openDeskFolder = (fId, name) => {
+      currentOpenDeskFolder = fId;
+      document.getElementById('desk-folder-title').textContent = name;
+      openWin('win-desk-folder');
+      renderDesktop(); // Перерисовываем, чтобы иконки появились внутри
+  }
+  
+  // Когда закрывают окно папки
+  document.querySelector('[data-close="win-desk-folder"]').addEventListener('click', () => {
+      currentOpenDeskFolder = null;
+      renderDesktop(); // Перерисовываем, чтобы скрыть содержимое
+  });
+
+  // Логика броска иконки В ПАПКУ
+  window.dropToFolder = (e, targetFolderId) => {
+      e.preventDefault();
+      const appId = e.dataTransfer.getData('text/plain');
+      if (!appId) return;
+      
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`));
+      if (apps[appId]) {
+          apps[appId].deskFolderId = targetFolderId; // Прописываем приложению, что оно теперь в папке
+          localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+          sysLog(`Приложение ${apps[appId].name} перемещено в папку`);
+          renderDesktop();
+      }
+  }
+
+  // Логика броска иконки НА СТОЛ (чтобы вытащить из папки)
+  window.dropToDesktop = (e) => {
+      e.preventDefault();
+      const appId = e.dataTransfer.getData('text/plain');
+      if (!appId) return;
+      
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`));
+      if (apps[appId]) {
+          apps[appId].deskFolderId = null; // Очищаем привязку к папке
+          localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+          renderDesktop();
+      }
+  }
+  
+  // Кнопка из контекстного меню (Вырвать на стол)
+  window.moveAppToDesktop = () => {
+      if(!targetContextMenuApp) return;
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`));
+      apps[targetContextMenuApp].deskFolderId = null;
+      localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+      renderDesktop();
+  }
+
+  // Обновление менеджера (для Админа и юзера)
+  function updateAppManagerList(myApps) {
+    const mgrCont = document.getElementById('app-manager-list');
+    mgrCont.innerHTML = '';
+    
+    if (currentUser === 'Admin') {
+      for(let user in usersData) {
+        const uApps = JSON.parse(localStorage.getItem(`apps_${user}`)) || {};
+        for(let id in uApps) addAppToManagerList(id, uApps[id], user, mgrCont);
+      }
+    } else {
+      for(let id in myApps) addAppToManagerList(id, myApps[id], currentUser, mgrCont);
+    }
+  }
+
+  function addAppToManagerList(id, app, owner, container) {
+      const mgrItem = document.createElement('div');
+      mgrItem.className = 'list-item';
+      const ownerTag = currentUser === 'Admin' ? `<small style="opacity:0.5"> [${owner}]</small>` : '';
+      mgrItem.innerHTML = `<div style="flex:1" onclick="runApp('${id}', ${JSON.stringify(app).replace(/"/g, '&quot;')})">${app.icon} ${app.name} ${ownerTag}</div><button class="btn" style="width:auto; padding:5px 10px; margin:0; background:var(--danger)" onclick="removeApp('${id}', '${owner}', event)">Удалить</button>`;
+      container.appendChild(mgrItem);
+  }
+
+  window.removeApp = (id, owner, e) => { 
+    if(e) e.stopPropagation(); 
+    if(!confirm(`Удалить приложение навсегда?`)) return;
+    const targetApps = JSON.parse(localStorage.getItem(`apps_${owner}`)); 
+    delete targetApps[id]; 
+    localStorage.setItem(`apps_${owner}`, JSON.stringify(targetApps)); 
+    renderDesktop(); 
+  };
+  
+  // Установка JS приложений
+  document.getElementById('js-upload').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+        const name = file.name.replace(/\.[^/.]+$/, ""); 
+        apps['app_'+Date.now()] = { name: name, icon: '⚙️', code: ev.target.result, deskFolderId: null };
+        localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+        renderDesktop();
+        alert(`Установлено!`);
+      };
+      reader.readAsText(file);
+      e.target.value = ''; 
+  };
+
+  // --- СИСТЕМНЫЕ ФУНКЦИИ (Сокращены для обзора) ---
+  function sysLog(msg, isError=false){ /* Логика логов */ }
+  window.sysError = (msg) => { sysLog(msg, true); alert("Ошибка! Смотрите логи."); }
+  function updateLogWidget() { const w=document.getElementById('log-widget'); if(!state.showLogWidget){w.style.display='none';return;} w.style.display='block'; }
+  window.toggleLogWidget = val => { state.showLogWidget=val; save(); updateLogWidget(); }
+  function save() { localStorage.setItem(`websaos_config_${currentUser}`, JSON.stringify(state)); }
+  window.openWin = id => { const w=document.getElementById(id); w.style.display='flex'; w.style.zIndex=++highestZ; };
+  window.switchTab = (el, id) => { document.querySelectorAll('.tab-content').forEach(c=>c.style.display='none'); document.querySelectorAll('.tab-link').forEach(l=>l.classList.remove('active')); document.getElementById(id).style.display='block'; el.classList.add('active'); };
+  window.fullReset = () => { if(confirm("ВНИМАНИЕ! Удалить ВСЁ?")) { localStorage.clear(); location.reload(); }};
+
+  // Применение настроек
+  function applySettings() {
+    const root = document.documentElement, desk = document.getElementById('desktop');
+    const t = THEMES[state.themeId] || THEMES['t1'], f = FORMS[state.formId] || FORMS['f3'];
+    root.style.setProperty('--accent', t.accent); root.style.setProperty('--win-bg-rgb', t.winRgb);
+    root.style.setProperty('--text', t.text); root.style.setProperty('--win-radius', f.win);
+    root.style.setProperty('--btn-radius', f.btn); root.style.setProperty('--blur', state.blur);
+    if(state.bgType==='color') { desk.style.backgroundImage='none'; desk.style.backgroundColor=state.bgValue; }
+    else { desk.style.backgroundImage=`url(${state.bgValue})`; desk.style.backgroundColor='transparent'; }
+    document.getElementById('sel-theme').value = state.themeId; document.getElementById('sel-form').value = state.formId;
+  }
+  document.getElementById('file-upload').onchange = e => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{state.bgType='image';state.bgValue=ev.target.result;save();applySettings();}; r.readAsDataURL(f); e.target.value=''; };
+  window.setBgUrl = () => { const url=document.getElementById('bg-url-input').value.trim(); if(!url)return alert("Пусто!"); state.bgType='image'; state.bgValue=url; save(); applySettings(); };
+  window.changeTheme = id => { state.themeId=id; save(); applySettings(); };
+  window.changeForm = id => { state.formId=id; save(); applySettings(); };
+  window.toggleBlur = () => { state.blur=state.blur==='15px'?'0px':'15px'; save(); applySettings(); };
+  window.setSolidColor = col => { state.bgType='color'; state.bgValue=col; save(); applySettings(); };
+
+  // Окна (Перетаскивание)
+  document.addEventListener('click', e => { const b=e.target.closest('[data-close]'); if(b)document.getElementById(b.getAttribute('data-close')).style.display='none'; });
+  function initDrag(w) { const h=w.querySelector('.win-header'); if(!h)return; h.onmousedown=h.ontouchstart=e=>{ w.style.zIndex=++highestZ; let sX=(e.clientX||e.touches[0].clientX)-w.offsetLeft, sY=(e.clientY||e.touches[0].clientY)-w.offsetTop; document.onmousemove=document.ontouchmove=ev=>{ w.style.left=Math.max(0,Math.min((ev.clientX||ev.touches[0].clientX)-sX,window.innerWidth-60))+'px'; w.style.top=Math.max(0,Math.min((ev.clientY||ev.touches[0].clientY)-sY,window.innerHeight-60))+'px'; }; document.onmouseup=document.ontouchend=()=>document.onmousemove=document.ontouchmove=null; }; }
+  function initResize(w) { let r=w.querySelector('.resize-handle'); if(!r){r=document.createElement('div');r.className='resize-handle';w.appendChild(r);} r.onmousedown=r.ontouchstart=e=>{ e.stopPropagation(); w.style.zIndex=++highestZ; let sW=w.offsetWidth, sH=w.offsetHeight, sX=e.clientX||e.touches[0].clientX, sY=e.clientY||e.touches[0].clientY; document.onmousemove=document.ontouchmove=ev=>{ w.style.width=Math.max(250,sW+((ev.clientX||ev.touches[0].clientX)-sX))+'px'; w.style.height=Math.max(150,sH+((ev.clientY||ev.touches[0].clientY)-sY))+'px'; }; document.onmouseup=document.ontouchend=()=>document.onmousemove=document.ontouchmove=null; }; }
+  function tick() { const bar=document.getElementById('info-bar'); const now=new Date(); const draw=batt=>{ bar.innerHTML=''; state.infoLayout.forEach(k=>{ let v=''; if(k==='hours')v=now.getHours().toString().padStart(2,'0'); if(k==='minutes')v=now.getMinutes().toString().padStart(2,'0'); if(k==='seconds')v=now.getSeconds().toString().padStart(2,'0'); if(k==='battery')v=`🔋${batt}%`; if(k==='date')v=now.toLocaleDateString(); if(k==='weekday')v=now.toLocaleDateString('ru',{weekday:'short'}); bar.insertAdjacentHTML('beforeend',`<div class="info-unit">${v}</div>`); }); }; if(navigator.getBattery)navigator.getBattery().then(b=>draw(Math.floor(b.level*100))); else draw('--'); }
+  function renderConfig(){ const a=document.getElementById('active-units'), h=document.getElementById('hidden-units'); a.innerHTML=''; h.innerHTML=''; state.infoLayout.forEach(id=>a.appendChild(createUnit(id,true))); state.hiddenLayout.forEach(id=>h.appendChild(createUnit(id,false))); document.getElementById('chk-log-widget').checked=state.showLogWidget; }
+  function createUnit(id,act){ const d=document.createElement('div'); d.className=`drag-item ${act?'':'hidden'}`; d.textContent=labels[id]; d.onclick=()=>{ if(act){state.infoLayout=state.infoLayout.filter(x=>x!==id);state.hiddenLayout.push(id);}else{state.hiddenLayout=state.hiddenLayout.filter(x=>x!==id);state.infoLayout.push(id);} save();applySettings();renderConfig(); }; return d; }
+
+  // App Builder
+  window.openAppIDE = () => { ['ide-name','ide-icon','ide-title','ide-btn-text','ide-alert'].forEach(i=>document.getElementById(i).value=''); openWin('win-ide'); }
+  window.generateAndInstallApp = () => { const name=document.getElementById('ide-name').value||'App', icon=document.getElementById('ide-icon').value||'🌟', bg=document.getElementById('ide-bg').value, title=document.getElementById('ide-title').value||'Hello', btnText=document.getElementById('ide-btn-text').value||'Click', alertMsg=document.getElementById('ide-alert').value||'OK'; const code=`<style>body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:${bg};font-family:sans-serif;}button{padding:10px 20px;border-radius:10px;border:none;background:#2b8cff;color:#fff;font-size:16px;}</style><h2>${title}</h2><button onclick="alert('${alertMsg}')">${btnText}</button>`; const apps=JSON.parse(localStorage.getItem(`apps_${currentUser}`))||{}; apps['app_'+Date.now()]={name,icon,code,deskFolderId:null}; localStorage.setItem(`apps_${currentUser}`,JSON.stringify(apps)); renderDesktop(); document.getElementById('win-ide').style.display='none'; }
+  function runApp(id, app) { let w=document.getElementById('run-'+id); if(!w){ w=document.createElement('div'); w.id='run-'+id; w.className='window'; w.style.cssText="width:80%;height:60%;top:20%;left:10%;display:flex;"; w.innerHTML=`<div class="win-header"><span>${app.icon} ${app.name}</span><button class="ctrl-btn" onclick="this.closest('.window').remove()">✕</button></div><div class="win-content" style="padding:0;"><iframe id="frame-${id}" style="width:100%;height:100%;border:none;background:#fff;"></iframe></div>`; document.body.appendChild(w); const d=document.getElementById('frame-'+id).contentWindow.document; d.open();d.write(app.code);d.close(); initDrag(w);initResize(w); } w.style.display='flex';w.style.zIndex=++highestZ; document.getElementById('main-menu').classList.remove('active'); }
+
+  // File Manager & Notepad (Сокращенная версия логики из 1.5)
+  function initFileSystem() { let f=JSON.parse(localStorage.getItem(`fs_${currentUser}`)); if(!f||Object.keys(f).length===0) localStorage.setItem(`fs_${currentUser}`,JSON.stringify({'default_1':{name:'welcome.txt',type:'file',parent:'root',content:'Привет!'}})); }
+  function updateFM() { /* ... код ФМ ... */ }
+})();
+</script>
+</body>
+</html>
