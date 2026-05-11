@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS 1.12.1</title>
+
+<style>
+  :root {
+    --accent: #2b8cff;
+    --danger: #ff4d4d;
+    --text: #e6eef8;
+    --win-bg-rgb: 22, 31, 41;
+    --win-border: #444444;
+    --ww-bg: rgba(22, 31, 41, 0.8);
+    --ww-border: #444444;
+    --win-opacity: 0.85;
+    --glass-blur: 15px;
+    --blur: 0px;
+    --shadow-op: 0.5;
+    --win-radius: 16px 16px 16px 16px;
+    --btn-radius: 10px 10px 10px 10px;
+    --menu-radius: 16px 16px 16px 16px;
+    --icon-size: 54px;
+    --text-size: 11px;
+  }
+
+  * { box-sizing: border-box; font-family: system-ui, sans-serif; transition: background 0.3s, color 0.3s, border-color 0.3s, border-radius 0.1s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: #000; color: var(--text); user-select: none; }
+  
+  #login-screen { position: fixed; inset: 0; background: rgba(10, 15, 20, 0.95); backdrop-filter: blur(20px); z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .login-box { background: rgba(255,255,255,0.05); padding: 30px; border-radius: var(--win-radius); text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,var(--shadow-op)); width: 350px; max-width: 90%; }
+  .users-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; max-height: 200px; overflow-y: auto; }
+  .user-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--btn-radius); padding: 10px; width: 80px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
+  .user-card:hover { transform: translateY(-5px); border-color: var(--accent); background: rgba(43, 140, 255, 0.2); }
+  .user-icon { font-size: 30px; margin-bottom: 5px; }
+  .user-name { font-size: var(--text-size); font-weight: bold; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  
+  .context-menu-base { position: fixed; background: rgba(var(--win-bg-rgb), 0.95); backdrop-filter: blur(10px); border: 1px solid var(--win-border); border-radius: var(--menu-radius); padding: 5px; display: none; flex-direction: column; z-index: 999999; box-shadow: 0 5px 15px rgba(0,0,0,var(--shadow-op)); min-width: 180px; }
+  .cm-item { padding: 10px 15px; font-size: calc(var(--text-size) + 2px); cursor: pointer; border-radius: var(--btn-radius); display: flex; gap: 10px; align-items: center; }
+  .cm-item:hover { background: var(--accent); color: #fff; }
+
+  .desktop { position: fixed; inset: 0; background-size: cover; background-position: center; filter: blur(var(--blur)); z-index: 1; }
+  .desktop-icons { position: fixed; top: 0; left: 0; width: 100%; height: calc(100% - 120px); padding: 20px; z-index: 10; overflow: hidden; pointer-events: none;}
+  .desk-icon { width: calc(var(--icon-size) + 10px); display: flex; flex-direction: column; align-items: center; cursor: pointer; position: absolute; pointer-events: auto; touch-action: none; transition: transform 0.1s;}
+  .desk-icon.dragging { opacity: 0.7; transform: scale(1.05); z-index: 100; }
+  .desk-icon-img { width: var(--icon-size); height: var(--icon-size); background: rgba(128,128,128,0.3); backdrop-filter: blur(5px); border-radius: var(--btn-radius); display: flex; align-items: center; justify-content: center; font-size: calc(var(--icon-size) / 2); margin-bottom: 5px; border: 1px solid var(--win-border); box-shadow: 0 4px 10px rgba(0,0,0,var(--shadow-op)); pointer-events: none;}
+  .desk-icon-text { font-size: var(--text-size); text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.8); color: #fff; word-break: break-word; font-weight: 500; pointer-events: none;}
+  
+  #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  .toast { background: rgba(var(--win-bg-rgb), 0.9); backdrop-filter: blur(10px); color: var(--text); padding: 10px 20px; border-radius: var(--menu-radius); font-size: calc(var(--text-size) + 2px); box-shadow: 0 4px 15px rgba(0,0,0,var(--shadow-op)); border: 1px solid var(--win-border); opacity: 0; animation: toastIn 0.3s forwards; }
+  .toast.error { border-color: var(--danger); }
+  .toast.success { border-color: #2ecc71; }
+  .toast.hide { animation: toastOut 0.3s forwards; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+
+  #storage-widget { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; z-index: 50; background: rgba(var(--win-bg-rgb), 0.5); border-radius: 50%; backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; border: 1px solid var(--win-border); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,var(--shadow-op)); }
+  .circular-chart { display: block; margin: 0 auto; max-width: 80%; max-height: 250px; }
+  .circle-bg { fill: none; stroke: rgba(128,128,128,0.2); stroke-width: 3.8; }
+  .circle { fill: none; stroke-width: 3.8; stroke-linecap: round; transition: stroke-dasharray 0.5s ease; }
+  .storage-text { position: absolute; font-size: 10px; font-weight: bold; }
+
+  #clock-widget { position: absolute; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--win-border); border-radius: var(--btn-radius); padding: 15px 20px; cursor: move; z-index: 50; display: flex; flex-direction: column; align-items: center; box-shadow: 0 5px 15px rgba(0,0,0,var(--shadow-op)); }
+  #clock-time { font-size: 32px; font-weight: bold; letter-spacing: 2px; }
+  #clock-date { font-size: 12px; opacity: 0.7; margin-top: 5px; }
+
+  #windows-widget { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); background: var(--ww-bg); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--ww-border); border-radius: var(--menu-radius); padding: 8px; display: none; flex-wrap: wrap; gap: 8px; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,var(--shadow-op)); max-width: 90vw; align-items: center; }
+  .ww-drag-handle { cursor: move; opacity: 0.5; padding: 0 5px; font-size: 14px; display: flex; align-items: center; }
+  .ww-icon { width: 40px; height: 40px; border-radius: var(--btn-radius); background: rgba(128,128,128,0.2); display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; transition: transform 0.2s; position: relative; }
+  .ww-icon:hover { transform: scale(1.1); background: rgba(128,128,128,0.4); }
+  .ww-icon.minimized { opacity: 0.5; border: 1px dashed rgba(255,255,255,0.3); }
+  .ww-icon.dragging { opacity: 0.3; transform: scale(0.9); }
+  .ww-indicator { position: absolute; bottom: -4px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+
+  #control-center { position: absolute; width: 320px; max-height: 80vh; overflow-y: auto; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); border-radius: var(--menu-radius); border: 1px solid var(--win-border); padding: 15px; display: none; flex-direction: column; gap: 15px; z-index: 99999; box-shadow: 0 10px 40px rgba(0,0,0,var(--shadow-op)); transition: border-radius 0.3s, transform 0.3s; }
+  #control-center.fullscreen { top: 0 !important; left: 0 !important; right: auto !important; bottom: auto !important; width: 100vw !important; height: 100vh !important; max-height: 100vh !important; border-radius: 0; }
+  #control-center::-webkit-scrollbar { width: 6px; }
+  #control-center::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.5); border-radius: 3px; }
+  .cc-header { display: flex; justify-content: center; align-items: center; font-weight:bold; font-size: 16px; border-bottom:1px solid rgba(128,128,128,0.2); padding-bottom:10px; margin-bottom:5px; position: sticky; top: -15px; background: rgba(var(--win-bg-rgb), 0.9); z-index: 2; padding-top: 15px; margin-top: -15px; cursor: move; }
+  .cc-section { background: rgba(128,128,128,0.05); padding: 10px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(128,128,128,0.1); }
+  .cc-section-title { font-size: 12px; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+  .cc-slider-group { display: flex; flex-direction: column; gap: 5px; }
+  .cc-slider-group label { font-size: 11px; opacity: 0.8; display: flex; justify-content: space-between; align-items: center; }
+  .cc-slider-group input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .cc-slider-group input[type="color"] { width: 30px; height: 30px; border: none; border-radius: 5px; cursor: pointer; background: none; padding: 0;}
+  .cc-slider-group select { padding: 5px; border-radius: 5px; background: rgba(128,128,128,0.2); color: var(--text); border: none; outline: none; }
+
+  .taskbar-container { position: fixed; z-index: 9999; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease; }
+  .taskbar { display: none; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); padding: 12px; border-radius: var(--menu-radius); border: 1px solid var(--win-border); flex-wrap: wrap; justify-content: center; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,var(--shadow-op)); transition: all 0.3s ease;}
+  .taskbar.active { display: flex; }
+  .burger { width: 55px; height: 55px; background: var(--accent); border-radius: var(--btn-radius); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,var(--shadow-op)); z-index: 10000; color: #fff; flex-shrink: 0;}
+  .icon-btn { width: 48px; height: 48px; border-radius: var(--btn-radius); background: rgba(128,128,128,0.15); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; color: var(--text); flex-shrink: 0;}
+  .icon-btn:hover { background: rgba(128,128,128,0.3); }
+  .taskbar-divider { background: rgba(128,128,128,0.3); flex-shrink: 0; }
+
+  body[data-taskbar-pos="horizontal"] .taskbar-container { bottom: 20px; left: 20px; flex-direction: column; }
+  body[data-taskbar-pos="horizontal"] .taskbar { flex-direction: row; max-width: 80vw; }
+  body[data-taskbar-pos="horizontal"] .taskbar-divider { width: 1px; height: 30px; margin: 0 5px; }
+  
+  body[data-taskbar-pos="vertical"] .taskbar-container { top: 50%; left: 20px; bottom: auto; transform: translateY(-50%); flex-direction: row; }
+  body[data-taskbar-pos="vertical"] .taskbar { flex-direction: column; max-height: 80vh; overflow-y: auto; max-width: 80px; }
+  body[data-taskbar-pos="vertical"] .taskbar-divider { width: 30px; height: 1px; margin: 5px 0; }
+
+  .window { position: absolute; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); border-radius: var(--win-radius); border: 1px solid var(--win-border); display: none; flex-direction: column; overflow: hidden; z-index: 500; min-width: 300px; max-width: 100vw; max-height: 100vh; box-shadow: 0 10px 40px rgba(0,0,0,var(--shadow-op)); transition: width 0.15s ease, height 0.15s ease;}
+  .window.fullscreen { top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; border-radius: 0; transform: none !important; }
+
+  .win-header { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: rgba(128,128,128,0.1); cursor: move; border-bottom: 1px solid rgba(128,128,128,0.1); flex-shrink: 0; transition: all 0.3s ease; }
+  .win-controls { display: flex; gap: 5px; transition: all 0.3s ease; }
+  .ctrl-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(128,128,128,0.2); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
+  .ctrl-btn:hover { filter: brightness(1.2); }
+  
+  body[data-ctrl-pos="left"] .win-header { flex-direction: row-reverse; }
+  body[data-ctrl-pos="left"] .win-controls { flex-direction: row-reverse; }
+  body[data-ctrl-pos="center"] .win-header { justify-content: center; position: relative; }
+  body[data-ctrl-pos="center"] .win-controls { position: absolute; left: 50%; transform: translateX(-50%); }
+  body[data-ctrl-pos="center"] .win-header > span { position: absolute; left: 15px; max-width: calc(50% - 60px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.6; }
+
+  .win-content { flex: 1; overflow: auto; padding: 15px; display: flex; flex-direction: column; }
+  .resize-handle { position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, rgba(128,128,128,0.4) 50%); border-bottom-right-radius: var(--win-radius); z-index: 10; touch-action: none; }
+  
+  .list-item { padding: 10px; background: rgba(128,128,128,0.05); border-radius: var(--btn-radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border: 1px solid transparent; }
+  textarea, input[type="text"], input[type="password"] { width: 100%; padding: 12px; background: rgba(128,128,128,0.1); border: 1px solid var(--win-border); color: var(--text); border-radius: var(--btn-radius); margin-bottom: 10px; font-size: 14px; outline: none; }
+  .btn { padding: 12px; border-radius: var(--btn-radius); border: none; background: var(--accent); color: white; width: 100%; font-weight: bold; cursor: pointer; margin: 5px 0; }
+  .folder-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px; align-content: flex-start; }
+
+  .fm-sidebar { width: 140px; background: rgba(0,0,0,0.3); border-right: 1px solid var(--win-border); display: flex; flex-direction: column; padding: 10px 0; }
+  .fm-tab { padding: 10px 15px; font-size: 13px; cursor: pointer; transition: background 0.2s; border-left: 3px solid transparent; }
+  .fm-tab:hover { background: rgba(255,255,255,0.05); }
+  .fm-tab.active { border-left-color: var(--accent); background: rgba(255,255,255,0.1); font-weight: bold; }
+
+  .anim-fade { animation: a-fade 0.3s ease; }
+  .anim-zoom { animation: a-zoom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  .anim-slide { animation: a-slide 0.3s ease; }
+  .anim-flip { animation: a-flip 0.4s ease; }
+  .anim-page { animation: a-page 0.5s ease; transform-origin: left center; }
+
+  @keyframes a-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes a-zoom { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+  @keyframes a-slide { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes a-flip { from { opacity: 0; transform: perspective(400px) rotateX(20deg); } to { opacity: 1; transform: perspective(400px) rotateX(0deg); } }
+  @keyframes a-page { from { opacity: 0; transform: perspective(800px) rotateY(-30deg); } to { opacity: 1; transform: perspective(800px) rotateY(0deg); } }
+
+  .term-line { margin-bottom: 4px; line-height: 1.4; }
+  .term-input-wrapper { display: flex; align-items: center; }
+  .term-input-wrapper span { color: #2ecc71; margin-right: 8px; }
+  
+  #snap-highlight { position: fixed; background: rgba(43, 140, 255, 0.2); border: 2px dashed var(--accent); z-index: 999998; pointer-events: none; transition: all 0.2s; display: none; }
+</style>
+</head>
+<body data-ctrl-pos="right" data-taskbar-pos="horizontal">
+
+<div id="toast-container"></div>
+<div id="snap-highlight"></div>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h2>WebSAOS 1.12.1</h2>
+    <p style="font-size:12px; opacity:0.7; margin-top:-10px;">Выберите профиль</p>
+    <div id="users-grid" class="users-grid"></div>
+    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+    <p style="font-size:12px; font-weight:bold; cursor:pointer; color:var(--accent)" onclick="toggleNewUserForm()">+ Создать пользователя</p>
+    <div id="new-user-form" style="display:none; text-align:left;">
+      <input type="text" id="new-u-name" placeholder="Имя профиля">
+      <input type="text" id="new-u-icon" placeholder="Иконка (напр. 👑)" value="👤">
+      <input type="password" id="new-u-pass" placeholder="Пароль">
+      <button class="btn" onclick="createNewUser()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<div id="context-menu" class="context-menu-base">
+  <div class="cm-item" onclick="createNewFolder()">📁 Создать папку</div>
+  <div class="cm-item" onclick="createUrlShortcut()">🌐 Создать ярлык (URL)</div>
+  <div class="cm-item" onclick="openWin('win-settings')">⚙️ Настройки системы</div>
+  <div class="cm-item" onclick="toggleControlCenter()">🎛 Кастомизация интерфейса</div>
+</div>
+
+<div id="icon-context-menu" class="context-menu-base"></div>
+
+<div id="widget-context-menu" class="context-menu-base">
+  <div class="cm-item" id="wcm-max">🔲 На весь экран</div>
+  <div class="cm-item" id="wcm-close" style="color: var(--danger)">✕ Закрыть окно</div>
+</div>
+
+<div id="desktop" class="desktop"></div>
+<div id="desktop-icons" class="desktop-icons"></div>
+
+<div id="clock-widget" style="left: 100px; top: 100px; display: none;">
+    <div id="clock-time">00:00</div>
+    <div id="clock-date">01.01.2026</div>
+</div>
+
+<div id="windows-widget">
+    <div class="ww-drag-handle">⋮⋮</div>
+    <div class="ww-icon" onclick="openWin('win-ww-settings')" title="Настройки виджета">⚙️</div>
+    <div id="ww-icons-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+</div>
+
+<div id="storage-widget" onclick="notify('Заполненность LocalStorage', 'info')">
+  <svg viewBox="0 0 36 36" class="circular-chart"><path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" /><path class="circle" id="storage-circle" stroke="#2ecc71" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" /></svg>
+  <div class="storage-text" id="storage-text">0%</div>
+</div>
+
+<div id="control-center" onclick="event.stopPropagation()">
+  <div class="cc-header">
+    <button class="ctrl-btn" style="background:var(--danger)" onclick="toggleControlCenter(event)">✕</button>
+  </div>
+  <div class="cc-section">
+    <div class="cc-section-title">🪟 Окна и Виджеты</div>
+    <div class="cc-slider-group">
+      <label>Кнопки управления окном:</label>
+      <select id="sel-win-ctrl-pos" onchange="changeWinCtrlPos(this.value)">
+        <option value="right">Справа (Windows)</option>
+        <option value="left">Слева (macOS)</option>
+        <option value="center">По центру</option>
+      </select>
+    </div>
+    <div class="cc-slider-group">
+      <label>Ориентация панели задач:</label>
+      <select id="sel-taskbar-pos" onchange="changeTaskbarPos(this.value)">
+        <option value="horizontal">Горизонтально (Внизу)</option>
+        <option value="vertical">Вертикально (Слева)</option>
+      </select>
+    </div>
+    <div style="height: 1px; background: rgba(128,128,128,0.2); margin: 5px 0;"></div>
+    <div class="cc-slider-group">
+      <label>Настройки виджета:</label>
+      <select id="sel-widget" onchange="loadWidgetSettings(this.value)">
+        <option value="clock-widget">Часы</option>
+        <option value="windows-widget">Dock панель (Окна)</option>
+        <option value="storage-widget">Хранилище</option>
+      </select>
+    </div>
+    <div class="cc-slider-group"><label>Отображать <input type="checkbox" id="widget-visible" onchange="updateWidgetSettings()"></label></div>
+    <div class="cc-slider-group"><label>Поверх всех окон <input type="checkbox" id="widget-top" onchange="updateWidgetSettings()"></label></div>
+  </div>
+  <div class="cc-section">
+    <div class="cc-section-title">✨ Общий стиль</div>
+    <div class="cc-slider-group"><label>Светлая тема <input type="checkbox" id="cc-theme-mode" onchange="toggleLightMode(this.checked)"></label></div>
+    <div class="cc-slider-group"><label>Акцентный цвет: <input type="color" id="cc-accent" oninput="changeCssVar('--accent', this.value)"></label></div>
+    <div class="cc-slider-group"><label>Цвет рамок (Border): <input type="color" id="cc-border" oninput="changeCssVar('--win-border', this.value)"></label></div>
+    <div class="cc-slider-group"><label>Глубина теней <span id="lbl-shd">0.5</span></label><input type="range" min="0" max="1" step="0.1" value="0.5" id="cc-shadow" oninput="changeCssVar('--shadow-op', this.value, 'lbl-shd')"></div>
+  </div>
+  <div class="cc-section">
+    <div class="cc-section-title">🌫 Стекло и Фон</div>
+    <div class="cc-slider-group"><label>Прозрачность <span id="lbl-op">0.85</span></label><input type="range" min="0.1" max="1" step="0.05" value="0.85" id="cc-opacity" oninput="changeCssVar('--win-opacity', this.value, 'lbl-op')"></div>
+    <div class="cc-slider-group"><label>Размытие стекла <span id="lbl-gbl">15px</span></label><input type="range" min="0" max="40" step="1" value="15" id="cc-glass" oninput="changeCssVar('--glass-blur', this.value + 'px', 'lbl-gbl')"></div>
+    <div class="cc-slider-group"><label>Размытие обоев <span id="lbl-bl">0px</span></label><input type="range" min="0" max="30" step="1" value="0" id="cc-bg-blur" oninput="changeCssVar('--blur', this.value + 'px', 'lbl-bl')"></div>
+  </div>
+  <div class="cc-section">
+    <div class="cc-section-title">🎬 Анимации Окон</div>
+    <div class="cc-slider-group">
+      <label>При открытии:</label>
+      <select id="sel-anim-open" onchange="changeAnim('open', this.value)">
+        <option value="anim-fade">Плавное появление (Fade)</option>
+        <option value="anim-zoom">Увеличение (Zoom)</option>
+        <option value="anim-slide">Выезд снизу (Slide)</option>
+        <option value="anim-flip">Вращение 3D (Flip)</option>
+        <option value="anim-page">Перелистывание страницы</option>
+      </select>
+    </div>
+    <div class="cc-slider-group">
+      <label>При перемещении (Физика):</label>
+      <select id="sel-anim-move" onchange="changeAnim('move', this.value)">
+        <option value="move-none">Стандартно (Без эффектов)</option>
+        <option value="move-tilt">Наклон в сторону (Tilt)</option>
+        <option value="move-cloth">Эффект ткани/желе (Cloth)</option>
+        <option value="move-scale">Уменьшение (Scale)</option>
+        <option value="move-ghost">Прозрачность (Ghost)</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-upload" accept="image/*" style="display:none">
+<input type="file" id="app-upload" accept=".js,.html,text/html,text/javascript" style="display:none">
+<input type="file" id="backup-upload" accept=".json" style="display:none">
+
+<div class="taskbar-container" id="taskbar-container">
+  <div class="taskbar" id="main-menu">
+    <div class="icon-btn" onclick="openWin('win-file-manager')" title="Файловый менеджер">📁</div>
+    <div class="icon-btn" onclick="openWin('win-terminal')" title="Терминал">🔲</div>
+    <div class="icon-btn" onclick="openWin('win-notepad')" title="Блокнот">📝</div>
+    <div class="taskbar-divider"></div>
+    <div class="icon-btn" onclick="openAppManager()" title="Менеджер">📦</div>
+    <div class="icon-btn" onclick="toggleControlCenter(event)" title="Кастомизация">🎨</div>
+    <div class="icon-btn" onclick="openWin('win-settings')" title="Настройки">⚙️</div>
+    <div class="icon-btn" onclick="logout()" title="Выход" style="background: rgba(255, 77, 77, 0.3);">🚪</div>
+  </div>
+  <div class="burger" id="burger-btn" onclick="toggleMenu(event)">📱</div> 
+</div>
+
+<div id="win-app-manager" class="window" style="width:85%; height:75%; top:10%; left:7%;">
+  <div class="win-header">
+    <span id="mgr-title">Менеджер Приложений</span>
+    <div class="win-controls">
+      <button class="ctrl-btn" onclick="minimizeWindow('win-app-manager')">_</button>
+      <button class="ctrl-btn" onclick="maximizeWindow('win-app-manager')">□</button>
+      <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-app-manager')">✕</button>
+    </div>
+  </div>
+  <div class="win-content">
+    <button class="btn" onclick="document.getElementById('app-upload').click()">📥 Установить приложение</button>
+    <div id="app-manager-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; margin-top:10px;"></div>
+  </div>
+</div>
+
+<div id="win-app-editor" class="window" style="width:90%; height:85%; top:5%; left:5%;">
+  <div class="win-header">
+    <span>Редактор Приложения</span>
+    <div class="win-controls">
+      <button class="ctrl-btn" onclick="minimizeWindow('win-app-editor')">_</button>
+      <button class="ctrl-btn" onclick="maximizeWindow('win-app-editor')">□</button>
+      <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-app-editor')">✕</button>
+    </div>
+  </div>
+  <div class="win-content" style="gap:10px;">
+    <input type="hidden" id="edit-id">
+    <input type="hidden" id="edit-owner">
+    <div style="display:flex; gap:10px;">
+      <input type="text" id="edit-icon" style="width:60px; text-align:center;" title="Эмодзи">
+      <input type="text" id="edit-name" placeholder="Название" style="flex:1;">
+    </div>
+    <textarea id="edit-code" style="flex:1; font-family:monospace; font-size:12px; white-space: pre;" placeholder="HTML/JS Код"></textarea>
+    <button class="btn" style="background:#2ecc71" onclick="saveEditedApp()">💾 Сохранить изменения</button>
+  </div>
+</div>
+
+<div id="win-settings" class="window" style="width:320px; height:200px; top:20%; left:20%;">
+    <div class="win-header">
+      <span>Настройки системы</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-settings')">_</button>
+        <button class="ctrl-btn" onclick="maximizeWindow('win-settings')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-settings')">✕</button>
+      </div>
+    </div>
+    <div class="win-content">
+      <button class="btn" onclick="document.getElementById('file-upload').click()">🖼 Установить обои</button>
+      <button class="btn" style="background:var(--danger); margin-top:20px;" onclick="fullReset()">Сбросить систему</button>
+    </div>
+</div>
+
+<div id="win-ww-settings" class="window" style="width:300px; height:auto; top:20%; left:20%;">
+    <div class="win-header">
+      <span>Настройки виджета окон</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-ww-settings')">_</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-ww-settings')">✕</button>
+      </div>
+    </div>
+    <div class="win-content">
+      <div class="cc-slider-group" style="margin-bottom:15px;">
+        <label>Цвет фона виджета: <input type="color" id="ww-set-bg" oninput="updateWWSettings()"></label>
+      </div>
+      <div class="cc-slider-group" style="margin-bottom:15px;">
+        <label>Прозрачность <span id="lbl-ww-op">0.8</span></label>
+        <input type="range" min="0.1" max="1" step="0.1" value="0.8" id="ww-set-op" oninput="updateWWSettings()">
+      </div>
+      <div class="cc-slider-group" style="margin-bottom:15px;">
+        <label>Цвет рамки: <input type="color" id="ww-set-border" oninput="updateWWSettings()"></label>
+      </div>
+      <div class="cc-slider-group">
+        <label>Подтверждать закрытие окон <input type="checkbox" id="ww-set-confirm" onchange="updateWWSettings()"></label>
+      </div>
+    </div>
+</div>
+
+<div id="win-terminal" class="window" style="width:450px; height:350px; top:15%; left:15%; background: rgba(10,10,10,0.95);">
+    <div class="win-header" style="background:#222; border-bottom:1px solid #444;">
+      <span style="color:#fff;">Терминал ОС</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" style="color:#fff" onclick="minimizeWindow('win-terminal')">_</button>
+        <button class="ctrl-btn" style="color:#fff" onclick="maximizeWindow('win-terminal')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-terminal')">✕</button>
+      </div>
+    </div>
+    <div class="win-content" style="flex-direction:column; padding:10px; font-family:monospace; color:#eee;">
+      <div id="term-output" style="flex:1; overflow-y:auto; font-size:13px; margin-bottom:10px; word-break:break-all;">
+        <div class="term-line" style="color:#2ecc71;">WebSAOS Terminal v1.12.1</div>
+        <div class="term-line" style="color:#aaa;">Для справки по переменным откройте Файлы -> Справка_терминала.txt</div>
+        <div class="term-line" style="color:#aaa;">Введите help для помощи.</div><br>
+      </div>
+      <div class="term-input-wrapper">
+        <span>root@os:~$</span>
+        <input type="text" id="term-input" style="background:transparent; border:none; color:#fff; outline:none; font-family:monospace; font-size:14px; flex:1; padding:0; margin:0;" autocomplete="off" onkeydown="if(event.key==='Enter') runTermCmd(this)">
+      </div>
+    </div>
+</div>
+
+<div id="win-file-manager" class="window" style="width:650px; height:450px; top:10%; left:15%;">
+    <div class="win-header">
+      <span>Файловый менеджер</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-file-manager')">_</button>
+        <button class="ctrl-btn" onclick="maximizeWindow('win-file-manager')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-file-manager')">✕</button>
+      </div>
+    </div>
+    <div class="win-content" style="padding:0; flex-direction:row;">
+      <div class="fm-sidebar" id="fm-sidebar">
+         <div class="fm-tab active" onclick="switchFMTab('docs', this)">📄 Документы</div>
+         <div class="fm-tab" onclick="switchFMTab('system', this)">⚙️ Система</div>
+         <div class="fm-tab" onclick="switchFMTab('desktop', this)">🖥 Рабочий стол</div>
+         <div class="fm-tab" onclick="switchFMTab('backup', this)">💾 Бэкап ОС</div>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; padding:10px; position:relative;">
+        <div id="fm-controls" style="margin-bottom:15px; display:flex; gap:10px;"></div>
+        <div id="fm-grid" class="folder-grid" style="flex:1; overflow-y:auto; background:rgba(0,0,0,0.2); padding:10px; border-radius:10px;"></div>
+      </div>
+    </div>
+</div>
+
+<div id="win-notepad" class="window" style="width:400px; height:400px; top:25%; left:30%;">
+    <div class="win-header">
+      <span id="np-title">Блокнот</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-notepad')">_</button>
+        <button class="ctrl-btn" onclick="maximizeWindow('win-notepad')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-notepad')">✕</button>
+      </div>
+    </div>
+    <div class="win-content" style="display:flex; flex-direction:column; padding:0;">
+      <div style="padding:5px 10px; background:rgba(128,128,128,0.1); display:flex; gap:10px; align-items:center;">
+          <button class="btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="saveNotepad()">💾 Сохранить</button>
+          <input type="text" id="np-filename" placeholder="Имя файла..." style="margin:0; padding:5px; flex:1; font-size:12px; border:none; background:rgba(0,0,0,0.2);" data-path="">
+      </div>
+      <textarea id="np-text" style="flex:1; border:none; border-radius:0; resize:none; margin:0; padding:15px; font-family:monospace; font-size:13px; background:rgba(0,0,0,0.1);" placeholder="Введите текст..."></textarea>
+    </div>
+</div>
+
+<script>
+// PWA Installation Setup
+(function setupPWA() {
+    const manifest = {
+        name: "WebSAOS 1.12.1", short_name: "WebSAOS",
+        display: "standalone", start_url: ".",
+        background_color: "#000000", theme_color: "#2b8cff",
+        icons: [{src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💻</text></svg>", sizes: "192x192", type: "image/svg+xml"}]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+    const link = document.createElement('link'); link.rel = 'manifest'; link.href = URL.createObjectURL(blob);
+    document.head.appendChild(link);
+    
+    if('serviceWorker' in navigator) {
+        const swBlob = new Blob(["self.addEventListener('fetch', function(event) {});"], {type: 'application/javascript'});
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(e => console.log('SW Reg failed', e));
+    }
+})();
+
+(function() {
+  let highestZ = 1000;
+  let usersData = {}; 
+  let currentUser = '';
+  let state = {};
+  let currentOpenDeskFolder = null; 
+  let windowInstances = [];
+  let currentFMTab = 'docs';
+  let currentFMPath = '';
+
+  const defaultVars = {
+    '--accent': '#2b8cff', '--win-bg-rgb': '22, 31, 41', '--text': '#e6eef8', 
+    '--win-border': '#444444', '--win-opacity': '0.85', '--glass-blur': '15px', 
+    '--blur': '0px', '--shadow-op': '0.5', '--win-radius': '16px 16px 16px 16px',
+    '--btn-radius': '10px 10px 10px 10px', '--menu-radius': '16px 16px 16px 16px',
+    '--icon-size': '54px', '--text-size': '11px', '--ww-bg': 'rgba(22, 31, 41, 0.8)', '--ww-border': '#444444'
+  };
+
+  window.notify = (msg, type = 'info') => {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`; toast.innerText = msg;
+      container.appendChild(toast);
+      setTimeout(() => { toast.classList.add('hide'); setTimeout(() => toast.remove(), 300); }, 3000);
+  };
+
+  window.updateStorageChart = () => {
+      let used = 0;
+      for (let key in localStorage) { if (localStorage.hasOwnProperty(key)) { used += localStorage[key].length * 2; } }
+      const percent = Math.min(Math.round((used / (5 * 1024 * 1024)) * 100), 100);
+      document.getElementById('storage-circle').setAttribute('stroke-dasharray', `${percent}, 100`);
+      document.getElementById('storage-text').innerText = `${percent}%`;
+  };
+
+  window.onload = () => {
+    usersData = JSON.parse(localStorage.getItem('websaos_users_data')) || { 'Admin': { icon: '👑', pass: '' } };
+    renderUsersGrid(); 
+    updateStorageChart(); 
+    setInterval(tickClock, 1000);
+  };
+
+  function renderUsersGrid() {
+    const grid = document.getElementById('users-grid'); grid.innerHTML = '';
+    for(let username in usersData) {
+        let card = document.createElement('div'); card.className = 'user-card';
+        card.innerHTML = `<div class="user-icon">${usersData[username].icon}</div><div class="user-name">${username}</div>`;
+        card.onclick = () => attemptLogin(username, usersData[username].pass);
+        grid.appendChild(card);
+    }
+  }
+
+  window.attemptLogin = (username, hasPass) => {
+      if (hasPass) { if (prompt(`Введите пароль для ${username}:`) !== hasPass) return notify("Неверный пароль!", "error"); }
+      currentUser = username;
+      document.getElementById('login-screen').style.display = 'none';
+      loadUserState();
+  }
+  
+  window.toggleNewUserForm = () => { const f = document.getElementById('new-user-form'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; }
+  
+  window.createNewUser = () => {
+      const name = document.getElementById('new-u-name').value.trim();
+      if (!name || usersData[name]) return notify('Ошибка имени', "error");
+      usersData[name] = { icon: document.getElementById('new-u-icon').value || '👤', pass: document.getElementById('new-u-pass').value };
+      localStorage.setItem('websaos_users_data', JSON.stringify(usersData));
+      toggleNewUserForm(); renderUsersGrid(); notify('Пользователь создан', 'success');
+  }
+
+  window.renameDesktopFolder = (fId, e) => {
+      e.stopPropagation(); 
+      const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+      if (!folders[fId]) return;
+      const currentName = folders[fId].name;
+      const newName = prompt("Введите новое имя папки:", currentName);
+      if (newName && newName.trim() !== "" && newName !== currentName) {
+          folders[fId].name = newName.trim();
+          localStorage.setItem(`desk_folders_${currentUser}`, JSON.stringify(folders));
+          renderDesktop(); 
+      }
+  };
+
+  window.deleteDesktopFolder = (fId, e) => {
+      e.stopPropagation();
+      if (!confirm("Удалить эту папку? Все приложения из неё будут перемещены на рабочий стол.")) return;
+      const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+      delete folders[fId]; localStorage.setItem(`desk_folders_${currentUser}`, JSON.stringify(folders));
+
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+      let appsUpdated = false;
+      for (let appId in apps) { if (apps[appId].deskFolderId === fId) { apps[appId].deskFolderId = null; appsUpdated = true; } }
+      if (appsUpdated) localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+      notify("Папка удалена", "success"); renderDesktop(); 
+  };
+
+  window.logout = () => {
+      windowInstances.forEach(win => { const w = document.getElementById(win.id); if(w) { if(w.id.startsWith('run-') || w.id.startsWith('win-folder-')) w.remove(); else w.style.display = 'none'; }});
+      windowInstances = [];
+      document.getElementById('windows-widget').style.display = 'none';
+      document.getElementById('main-menu').classList.remove('active');
+      document.getElementById('control-center').style.display = 'none';
+      document.getElementById('desktop-icons').innerHTML = '';
+      document.getElementById('clock-widget').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+      currentUser = ''; renderUsersGrid();
+  }
+
+  function loadUserState() {
+    for (let key in defaultVars) document.documentElement.style.setProperty(key, defaultVars[key]);
+    state = JSON.parse(localStorage.getItem(`websaos_config_${currentUser}`)) || {};
+    
+    if(!state.theme) state.theme = {};
+    if(!state.theme.winCtrlPos) state.theme.winCtrlPos = 'right';
+    if(!state.theme.taskbarPos) state.theme.taskbarPos = 'horizontal';
+    if(!state.dockSettings) state.dockSettings = {bg: '#161f29', op: '0.8', border: '#444444', confirm: true};
+    if(!state.dockPos) state.dockPos = {x: null, y: null};
+    if(!state.widgetPos) state.widgetPos = {x: 100, y: 100};
+    if(!state.iconPos) state.iconPos = {};
+    if(!state.widgets) {
+        state.widgets = {
+            'clock-widget': { visible: true, top: false },
+            'windows-widget': { visible: true, top: false },
+            'storage-widget': { visible: true, top: false }
+        };
+    }
+
+    applySettings(); 
+    
+    loadVFS().then(() => {
+        renderDesktop(); 
+        applyWidgetState();
+    });
+    
+    document.querySelectorAll('.window').forEach(win => { 
+        initDrag(win); initResize(win); 
+        win.addEventListener('mousedown', () => { win.style.zIndex = ++highestZ; });
+        win.addEventListener('touchstart', () => { win.style.zIndex = ++highestZ; }, {passive: true});
+    });
+    
+    initWidgetDrag(document.getElementById('clock-widget'));
+    initDockDrag(document.getElementById('windows-widget'));
+    initControlCenterDrag(); 
+    
+    applyWidgetSettingsToDOM();
+    loadWidgetSettings('clock-widget'); 
+    applyWWSettingsUI();
+    notify(`Добро пожаловать, ${currentUser}!`, "success"); 
+  }
+
+  window.saveProfile = () => { localStorage.setItem(`websaos_config_${currentUser}`, JSON.stringify(state)); updateStorageChart(); }
+
+  window.toggleMenu = (e) => {
+      if(e) e.stopPropagation();
+      document.getElementById('main-menu').classList.toggle('active');
+  };
+
+  const contextMenu = document.getElementById('context-menu');
+  const widgetContextMenu = document.getElementById('widget-context-menu');
+  const iconContextMenu = document.getElementById('icon-context-menu');
+  let longPressTimer;
+  
+  document.addEventListener('click', (e) => { 
+      contextMenu.style.display = 'none'; 
+      widgetContextMenu.style.display = 'none';
+      iconContextMenu.style.display = 'none';
+      if(!e.target.closest('#taskbar-container') && !e.target.closest('#control-center')) { 
+          document.getElementById('main-menu').classList.remove('active'); 
+      }
+  });
+
+  const showContext = (e) => { 
+      e.preventDefault(); 
+      contextMenu.style.display = 'flex'; 
+      contextMenu.style.left = (e.clientX || e.touches[0].clientX) + 'px'; 
+      contextMenu.style.top = (e.clientY || e.touches[0].clientY) + 'px'; 
+  };
+
+  document.addEventListener('contextmenu', (e) => { if (e.target.id === 'desktop' || e.target.id === 'desktop-icons') showContext(e); });
+  document.addEventListener('touchstart', (e) => { if (e.target.id === 'desktop' || e.target.id === 'desktop-icons') longPressTimer = setTimeout(() => showContext(e), 600); });
+  document.addEventListener('touchend', () => clearTimeout(longPressTimer));
+  document.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+
+  window.createNewFolder = () => { 
+      const name = prompt("Имя новой папки:"); 
+      if (!name) return; 
+      const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {}; 
+      folders['df_' + Date.now()] = { name: name }; 
+      localStorage.setItem(`desk_folders_${currentUser}`, JSON.stringify(folders)); 
+      renderDesktop(); 
+  }
+
+  window.createUrlShortcut = () => { 
+      const name = prompt("Имя ярлыка:"); if(!name) return; 
+      const url = prompt("Введите URL:", "https://"); if(!url) return; 
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {}; 
+      apps['url_'+Date.now()] = { name, icon: '🌐', type: 'url', url }; 
+      localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps)); 
+      renderDesktop(); 
+  }
+
+  window.openDeskFolder = (fId, name) => { 
+      let winId = 'win-folder-' + fId;
+      let w = document.getElementById(winId);
+      if(!w) {
+          w = document.createElement('div');
+          w.id = winId;
+          w.className = `window ${state.theme.openAnim}`;
+          w.style.cssText = "width:300px; height:350px; top:20%; left:20%; display:flex;";
+          w.innerHTML = `
+              <div class="win-header">
+                <span id="title-${winId}">${name}</span>
+                <div class="win-controls">
+                  <button class="ctrl-btn" onclick="minimizeWindow('${winId}')">_</button>
+                  <button class="ctrl-btn" onclick="maximizeWindow('${winId}')">□</button>
+                  <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('${winId}')">✕</button>
+                </div>
+              </div>
+              <div class="win-content" style="padding:0; background:rgba(0,0,0,0.2);">
+                <div id="content-${winId}" class="folder-grid"></div>
+              </div>`;
+          document.body.appendChild(w);
+          initDrag(w); initResize(w);
+          w.addEventListener('mousedown', () => { w.style.zIndex = ++highestZ; });
+          w.addEventListener('touchstart', () => { w.style.zIndex = ++highestZ; }, {passive: true});
+      }
+      
+      const content = document.getElementById(`content-${winId}`);
+      content.innerHTML = '';
+      const myApps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+      for(let id in myApps) {
+          if(myApps[id].deskFolderId === fId) {
+             const appIcon = document.createElement('div'); appIcon.className = 'desk-icon'; appIcon.style.position = 'relative';
+             appIcon.innerHTML = `<div class="desk-icon-img">${myApps[id].icon}</div><div class="desk-icon-text">${myApps[id].name}</div>`;
+             appIcon.onclick = () => { if(myApps[id].type === 'url') window.open(myApps[id].url, '_blank'); else runApp(id, myApps[id]); };
+             content.appendChild(appIcon);
+          }
+      }
+      w.style.display = 'flex';
+      w.style.zIndex = ++highestZ;
+      registerWindow(winId, '📁', name);
+  }
+
+  window.openAppManager = () => {
+      const mgrCont = document.getElementById('app-manager-list'); 
+      mgrCont.innerHTML = '';
+      document.getElementById('mgr-title').innerText = currentUser === 'Admin' ? 'Менеджер (Глобальный)' : 'Менеджер Приложений';
+      
+      let appsToRender = [];
+      if (currentUser === 'Admin') {
+          for(let i=0; i<localStorage.length; i++) {
+              let key = localStorage.key(i);
+              if(key.startsWith('apps_')) {
+                  let owner = key.replace('apps_', '');
+                  let ownerApps = JSON.parse(localStorage.getItem(key)) || {};
+                  for(let id in ownerApps) appsToRender.push({ id, owner, app: ownerApps[id] });
+              }
+          }
+      } else {
+          let myApps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+          for(let id in myApps) appsToRender.push({ id, owner: currentUser, app: myApps[id] });
+      }
+
+      appsToRender.forEach(item => {
+          const typeTag = item.app.type === 'url' ? '🌐 Ярлык' : '📦 Прил.';
+          const ownerTag = currentUser === 'Admin' ? `<small style="color:var(--accent)"> [${item.owner}]</small>` : '';
+          
+          mgrCont.innerHTML += `
+          <div class="list-item">
+              <div>${item.app.icon} <b>${item.app.name}</b> ${ownerTag} <br><small style="opacity:0.5">${typeTag}</small></div>
+              <div style="display:flex; gap:5px;">
+                  ${item.app.type !== 'url' ? `<button class="btn" style="width:auto; padding:5px; margin:0; background:#f39c12" onclick="openAppEditor('${item.id}', '${item.owner}')">✏️ Редакт.</button>` : ''}
+                  <button class="btn" style="width:auto; padding:5px 10px; margin:0; background:var(--danger)" onclick="removeApp('${item.id}', '${item.owner}')">🗑</button>
+              </div>
+          </div>`;
+      });
+      openWin('win-app-manager');
+  }
+
+  window.removeApp = (id, owner) => { 
+      if(!confirm(`Удалить приложение?`)) return;
+      const targetApps = JSON.parse(localStorage.getItem(`apps_${owner}`)); 
+      delete targetApps[id]; 
+      localStorage.setItem(`apps_${owner}`, JSON.stringify(targetApps)); 
+      openAppManager(); renderDesktop(); updateStorageChart(); notify("Удалено");
+  };
+
+  window.openAppEditor = (id, owner) => {
+      const apps = JSON.parse(localStorage.getItem(`apps_${owner}`));
+      if(!apps || !apps[id]) return;
+      document.getElementById('edit-id').value = id;
+      document.getElementById('edit-owner').value = owner;
+      document.getElementById('edit-icon').value = apps[id].icon;
+      document.getElementById('edit-name').value = apps[id].name;
+      document.getElementById('edit-code').value = apps[id].code;
+      openWin('win-app-editor');
+  }
+
+  window.saveEditedApp = () => {
+      const id = document.getElementById('edit-id').value;
+      const owner = document.getElementById('edit-owner').value;
+      const apps = JSON.parse(localStorage.getItem(`apps_${owner}`));
+      apps[id].icon = document.getElementById('edit-icon').value;
+      apps[id].name = document.getElementById('edit-name').value;
+      apps[id].code = document.getElementById('edit-code').value;
+      localStorage.setItem(`apps_${owner}`, JSON.stringify(apps));
+      notify("Приложение сохранено!", "success");
+      document.getElementById('win-app-editor').style.display = 'none';
+      renderDesktop(); openAppManager();
+  }
+
+  document.getElementById('app-upload').onchange = (e) => {
+      const file = e.target.files[0]; 
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+          const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+          const name = file.name.replace(/\.[^/.]+$/, ""); 
+          apps['app_'+Date.now()] = { name, icon: '🚀', type: 'internal', code: ev.target.result, deskFolderId: null };
+          localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+          renderDesktop(); 
+          openAppManager(); 
+          notify(`Приложение ${name} установлено!`, "success"); 
+          updateStorageChart();
+      };
+      reader.readAsText(file); 
+      e.target.value = ''; 
+  };
+
+  // --- OPFS FILE SYSTEM (VFS) ---
+  
+  async function getOpfsDir(path, create = false) {
+      const root = await navigator.storage.getDirectory();
+      let curr = await root.getDirectoryHandle('vfs_' + currentUser, {create: true});
+      if(!path) return curr;
+      let parts = path.split('/').filter(p => p);
+      for(let p of parts) { curr = await curr.getDirectoryHandle(p, {create}); }
+      return curr;
+  }
+
+  async function moveOpfsFile(srcPath, destPath, fileName) {
+      try {
+          let srcDir = await getOpfsDir(srcPath);
+          let destDir = await getOpfsDir(destPath);
+          let srcFile = await srcDir.getFileHandle(fileName);
+          let file = await srcFile.getFile();
+          
+          let destFile = await destDir.getFileHandle(fileName, {create: true});
+          let writable = await destFile.createWritable();
+          await writable.write(await file.arrayBuffer());
+          await writable.close();
+          
+          await srcDir.removeEntry(fileName);
+          renderFM(); notify("Перемещено", "success");
+      } catch(e) { notify("Ошибка перемещения", "error"); console.error(e); }
+  }
+
+  async function loadVFS() {
+      const root = await navigator.storage.getDirectory();
+      try {
+          await root.getDirectoryHandle('vfs_' + currentUser);
+      } catch(e) {
+          const vfsRoot = await root.getDirectoryHandle('vfs_' + currentUser, {create: true});
+          const fileHandle = await vfsRoot.getFileHandle('Справка_терминала.txt', {create: true});
+          const writable = await fileHandle.createWritable();
+          await writable.write("СПРАВКА ПО ТЕРМИНАЛУ И ОС WebSAOS 1.12.1\n\nТерминал позволяет выполнять JavaScript код в контексте ОС и менять CSS-переменные системы напрямую.\nСинтаксис для настроек: переменная = значение");
+          await writable.close();
+      }
+      // Очистка старой VFS из localStorage для избежания мусора
+      localStorage.removeItem(`websaos_vfs_${currentUser}`);
+  }
+
+  window.switchFMTab = (tab, el) => {
+      document.querySelectorAll('.fm-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      currentFMTab = tab;
+      currentFMPath = '';
+      renderFM();
+  }
+
+  window.renderFM = async () => {
+      const grid = document.getElementById('fm-grid');
+      const ctrl = document.getElementById('fm-controls');
+      grid.innerHTML = ''; ctrl.innerHTML = '';
+
+      if(currentFMTab === 'docs') {
+          ctrl.innerHTML = `
+              ${currentFMPath ? `<button class="btn" style="width:auto; padding:8px 15px; margin:0;" onclick="fmGoUp()">⬅ Назад</button>` : ''}
+              <button class="btn" style="width:auto; padding:8px 15px; margin:0;" onclick="createNewFile()">📄 Файл</button>
+              <button class="btn" style="width:auto; padding:8px 15px; margin:0;" onclick="fmCreateFolder()">📁 Папка</button>
+              <span style="align-self:center; margin-left:10px; opacity:0.7">${currentFMPath ? 'Корневая / ' + currentFMPath : 'Корневая папка'}</span>
+          `;
+          
+          try {
+              let currDir = await getOpfsDir(currentFMPath);
+              let items = [];
+              for await (let [name, handle] of currDir.entries()) {
+                  items.push({name, isDir: handle.kind === 'directory'});
+              }
+              
+              items.sort((a, b) => (b.isDir - a.isDir) || a.name.localeCompare(b.name));
+
+              for (let item of items) {
+                  const icon = document.createElement('div'); icon.className = 'desk-icon'; icon.style.position = 'relative';
+                  let isDir = item.isDir;
+                  let file = item.name;
+                  
+                  icon.innerHTML = `
+                    <div class="desk-icon-img" style="font-size:26px; border-radius:8px;">${isDir ? '📁' : '📄'}</div>
+                    <div class="desk-icon-text" style="color:var(--text);">${file}</div>`;
+                  
+                  if(isDir) {
+                      icon.ondragover = e => e.preventDefault();
+                      icon.ondrop = async e => {
+                          e.preventDefault();
+                          let dragFileName = e.dataTransfer.getData('text/plain');
+                          if(dragFileName && dragFileName !== file) {
+                              await moveOpfsFile(currentFMPath, currentFMPath + file + '/', dragFileName);
+                          }
+                      }
+                      icon.onclick = () => { currentFMPath += file + '/'; renderFM(); };
+                  } else {
+                      icon.draggable = true;
+                      icon.ondragstart = e => e.dataTransfer.setData('text/plain', file);
+                      icon.onclick = () => openNotepad(file, currentFMPath);
+                  }
+
+                  icon.oncontextmenu = e => {
+                      e.preventDefault(); e.stopPropagation();
+                      let cm = document.getElementById('icon-context-menu');
+                      cm.innerHTML = `
+                          ${!isDir ? `<div class="cm-item" onclick="openNotepad('${file}', '${currentFMPath}')">🚀 Открыть</div>` : `<div class="cm-item" onclick="currentFMPath += '${file}/'; renderFM();">🚀 Открыть</div>`}
+                          ${!isDir ? `<div class="cm-item" onclick="downloadFile('${file}')">⬇ Скачать</div>` : ''}
+                          <div class="cm-item" style="color:var(--danger)" onclick="deleteFile('${file}', ${isDir})">🗑 Удалить</div>
+                      `;
+                      cm.style.display = 'flex'; cm.style.left = e.clientX + 'px'; cm.style.top = e.clientY + 'px';
+                  };
+                  grid.appendChild(icon);
+              }
+          } catch(e) { console.error(e); notify("Ошибка чтения папки", "error"); fmGoUp(); }
+
+      } else if (currentFMTab === 'system') {
+          ctrl.innerHTML = `<span style="opacity:0.7">Установленные приложения</span>`;
+          const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+          for(let id in apps) {
+              const icon = document.createElement('div'); icon.className = 'desk-icon'; icon.style.position = 'relative';
+              icon.innerHTML = `<div class="desk-icon-img">${apps[id].icon}</div><div class="desk-icon-text">${apps[id].name}</div>`;
+              icon.onclick = () => openAppEditor(id, currentUser);
+              grid.appendChild(icon);
+          }
+      } else if (currentFMTab === 'desktop') {
+          ctrl.innerHTML = `<span style="opacity:0.7">Ярлыки и папки рабочего стола</span>`;
+          const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+          for(let fId in folders) {
+              const icon = document.createElement('div'); icon.className = 'desk-icon'; icon.style.position = 'relative';
+              icon.innerHTML = `<div class="desk-icon-img">📁</div><div class="desk-icon-text">${folders[fId].name}</div>`;
+              icon.onclick = () => openDeskFolder(fId, folders[fId].name);
+              grid.appendChild(icon);
+          }
+          const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+          for(let id in apps) {
+              if(!apps[id].deskFolderId) {
+                  const icon = document.createElement('div'); icon.className = 'desk-icon'; icon.style.position = 'relative';
+                  icon.innerHTML = `<div class="desk-icon-img">${apps[id].icon}</div><div class="desk-icon-text">${apps[id].name}</div>`;
+                  icon.onclick = () => { if(apps[id].type === 'url') window.open(apps[id].url, '_blank'); else runApp(id, apps[id]); };
+                  grid.appendChild(icon);
+              }
+          }
+      } else if (currentFMTab === 'backup') {
+          ctrl.innerHTML = `
+              <button class="btn" style="width:auto; padding:8px 15px; margin:0; background:#2ecc71;" onclick="downloadBackup()">⬇ Скачать бэкап системы (JSON)</button>
+              <button class="btn" style="width:auto; padding:8px 15px; margin:0;" onclick="document.getElementById('backup-upload').click()">⬆ Загрузить бэкап системы</button>
+          `;
+          grid.innerHTML = `<div style="color:var(--text); opacity:0.8; padding:10px;">Файл бэкапа содержит настройки ОС, установленные приложения и профили. <b>Внимание:</b> Личные файлы из папки «Документы» теперь безопасно хранятся в OPFS и не экспортируются через общий системный бэкап. Для их скачивания перейдите в «Документы».</div>`;
+      }
+  };
+
+  window.fmGoUp = () => {
+      let parts = currentFMPath.split('/'); parts.pop(); parts.pop();
+      currentFMPath = parts.length > 0 ? parts.join('/') + '/' : '';
+      renderFM();
+  }
+
+  window.fmCreateFolder = async () => {
+      const name = prompt("Имя папки:"); if(!name) return;
+      try {
+          let currDir = await getOpfsDir(currentFMPath);
+          await currDir.getDirectoryHandle(name, {create: true});
+          renderFM();
+      } catch(e) { notify("Ошибка создания папки", "error"); console.error(e); }
+  }
+
+  window.downloadFile = async (fileName) => {
+      try {
+          let dir = await getOpfsDir(currentFMPath);
+          let fileHandle = await dir.getFileHandle(fileName);
+          let file = await fileHandle.getFile();
+          let a = document.createElement('a');
+          a.href = URL.createObjectURL(file);
+          a.download = fileName;
+          a.click();
+      } catch (e) { notify("Ошибка скачивания файла", "error"); console.error(e); }
+  }
+
+  window.downloadBackup = () => {
+      const blob = new Blob([JSON.stringify(localStorage)], {type: 'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'websaos_system_backup.json';
+      a.click();
+  }
+
+  document.getElementById('backup-upload').onchange = (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+          try {
+              let data = JSON.parse(ev.target.result);
+              for(let k in data) localStorage.setItem(k, data[k]);
+              notify("Бэкап системы успешно восстановлен! Перезагрузка...", "success");
+              setTimeout(()=>location.reload(), 2000);
+          } catch(err) { notify("Ошибка файла бэкапа", "error"); }
+      };
+      reader.readAsText(file); e.target.value = '';
+  }
+
+  window.createNewFile = async () => {
+      const name = prompt("Введите имя файла:"); 
+      if(!name) return;
+      const fname = name.endsWith('.txt') ? name : name + '.txt';
+      try {
+          let currDir = await getOpfsDir(currentFMPath);
+          await currDir.getFileHandle(fname, {create: true});
+          renderFM(); notify("Файл создан", "success");
+      } catch(e) { notify("Ошибка создания файла", "error"); console.error(e); }
+  }
+  
+  window.deleteFile = async (name, isDir) => {
+      if(!confirm(`Удалить ${name}?`)) return;
+      try {
+          let currDir = await getOpfsDir(currentFMPath);
+          await currDir.removeEntry(name, {recursive: isDir});
+          renderFM(); notify("Удалено");
+          document.getElementById('icon-context-menu').style.display = 'none';
+      } catch(e) { notify("Ошибка удаления", "error"); console.error(e); }
+  }
+
+  window.openNotepad = async (fileName = "", path = "") => {
+      let content = '';
+      if (fileName) {
+          try {
+              let dir = await getOpfsDir(path);
+              let fileHandle = await dir.getFileHandle(fileName);
+              let file = await fileHandle.getFile();
+              content = await file.text();
+          } catch(e) { console.error("Ошибка чтения Блокнотом:", e); }
+      }
+      document.getElementById('icon-context-menu').style.display = 'none';
+      document.getElementById('np-title').innerText = fileName ? `Блокнот - ${fileName}` : 'Блокнот (Новый файл)';
+      document.getElementById('np-filename').value = fileName;
+      document.getElementById('np-filename').dataset.path = path || currentFMPath;
+      document.getElementById('np-text').value = content;
+      openWin('win-notepad');
+  }
+
+  window.saveNotepad = async () => {
+      let fileName = document.getElementById('np-filename').value.trim();
+      if(!fileName) {
+          fileName = prompt("Укажите имя для сохранения файла:");
+          if(!fileName) return;
+          fileName = fileName.endsWith('.txt') ? fileName : fileName + '.txt';
+          document.getElementById('np-filename').value = fileName;
+          document.getElementById('np-title').innerText = `Блокнот - ${fileName}`;
+      }
+      let path = document.getElementById('np-filename').dataset.path || currentFMPath;
+      const content = document.getElementById('np-text').value;
+      
+      try {
+          let dir = await getOpfsDir(path, true);
+          let fileHandle = await dir.getFileHandle(fileName, {create: true});
+          let writable = await fileHandle.createWritable();
+          await writable.write(content);
+          await writable.close();
+          notify("Файл успешно сохранен", "success"); 
+          if(currentFMTab === 'docs') renderFM(); 
+      } catch (e) {
+          notify("Ошибка сохранения", "error");
+          console.error(e);
+      }
+  }
+
+  // --- ТЕРМИНАЛ ---
+  window.runTermCmd = (el) => {
+      const val = el.value.trim(); 
+      if(!val) return;
+      const out = document.getElementById('term-output');
+      out.innerHTML += `<div class="term-line"><span style="color:#2ecc71;">root@os:~$</span> <span style="color:#fff;">${val}</span></div>`;
+      el.value = '';
+      
+      let response = '';
+      if(val === 'clear') { 
+          out.innerHTML = ''; return; 
+      } else if(val === 'help') { 
+          response = "Для изменения CSS переменных: --имя_переменной = значение\nВыполнение JS (API ОС): просто введите код."; 
+      } else {
+          let cssMatch = val.match(/^(--[a-zA-Z0-9_-]+)\s*=\s*(.*)$/);
+          if(cssMatch) {
+              changeCssVar(cssMatch[1], cssMatch[2]);
+              response = `[OK] CSS-переменная ${cssMatch[1]} установлена в ${cssMatch[2]}`;
+          } else {
+              try {
+                  let res = eval(val);
+                  if(val.includes('state.') || val.includes('dockSettings')) saveProfile(); 
+                  response = res !== undefined ? String(res) : '[OK] Команда выполнена';
+              } catch(e) { response = `<span style="color:#f44;">Ошибка: ${e.message}</span>`; }
+          }
+      }
+      out.innerHTML += `<div class="term-line" style="color:#aaa; margin-bottom: 8px;">${response}</div>`;
+      out.scrollTop = out.scrollHeight;
+  };
+
+  function registerWindow(id, icon, title) {
+      if(!windowInstances.find(w => w.id === id)) {
+          windowInstances.push({ id, icon, title, state: 'open' });
+          renderWindowWidget();
+      }
+      let winObj = windowInstances.find(w => w.id === id);
+      if(winObj) winObj.state = 'open';
+      renderWindowWidget();
+  }
+
+  window.minimizeWindow = (id) => {
+      const w = document.getElementById(id); if(!w) return;
+      w.style.display = 'none';
+      let winObj = windowInstances.find(x => x.id === id);
+      if(winObj) winObj.state = 'minimized';
+      renderWindowWidget();
+  }
+
+  window.maximizeWindow = (id) => {
+      const w = document.getElementById(id); if(!w) return;
+      w.classList.toggle('fullscreen'); w.style.zIndex = ++highestZ;
+      if(w.classList.contains('fullscreen')) {
+          w.style.left = '0'; w.style.top = '0'; w.style.width = '100vw'; w.style.height = '100vh';
+      }
+  }
+
+  window.closeWindow = (id, skipConfirm = false) => {
+      if(!skipConfirm && state.dockSettings.confirm) { 
+          if(!confirm("Уверены, что хотите закрыть это окно?")) return; 
+      }
+      const w = document.getElementById(id);
+      if(w) { 
+          if(w.id.startsWith('run-') || w.id.startsWith('win-folder-')) w.remove(); 
+          else w.style.display = 'none'; 
+      }
+      windowInstances = windowInstances.filter(win => win.id !== id);
+      renderWindowWidget();
+  }
+
+  window.toggleWindowState = (id) => {
+      const w = document.getElementById(id); 
+      let winObj = windowInstances.find(x => x.id === id);
+      if(!w || !winObj) return;
+
+      if(winObj.state === 'minimized') { 
+          w.style.display = 'flex'; 
+          w.style.zIndex = ++highestZ; 
+          winObj.state = 'open'; 
+      } else { 
+          w.style.display = 'none'; 
+          winObj.state = 'minimized'; 
+      }
+      renderWindowWidget();
+  }
+
+  window.renderWindowWidget = () => {
+      const cont = document.getElementById('ww-icons-container'); cont.innerHTML = '';
+      windowInstances.forEach((win, index) => {
+          const iconEl = document.createElement('div');
+          iconEl.className = `ww-icon ${win.state === 'minimized' ? 'minimized' : ''}`;
+          iconEl.innerHTML = `${win.icon} ${win.state === 'open' ? '<div class="ww-indicator"></div>' : ''}`;
+          iconEl.title = win.title; iconEl.draggable = true;
+          iconEl.onclick = () => toggleWindowState(win.id);
+          const openCtx = (e) => {
+              e.preventDefault(); e.stopPropagation();
+              widgetContextMenu.style.display = 'flex';
+              widgetContextMenu.style.left = (e.clientX || e.touches[0].clientX) + 'px';
+              widgetContextMenu.style.top = (e.clientY || e.touches[0].clientY) + 'px';
+              document.getElementById('wcm-max').onclick = () => { maximizeWindow(win.id); widgetContextMenu.style.display='none'; };
+              document.getElementById('wcm-close').onclick = () => { closeWindow(win.id); widgetContextMenu.style.display='none'; };
+          };
+          iconEl.oncontextmenu = openCtx;
+          let pressTimer;
+          iconEl.ontouchstart = (e) => { pressTimer = setTimeout(() => openCtx(e), 600); };
+          iconEl.ontouchend = iconEl.ontouchcancel = () => clearTimeout(pressTimer);
+          iconEl.ondragstart = (e) => { e.dataTransfer.setData('text/plain', index); iconEl.classList.add('dragging'); };
+          iconEl.ondragend = () => { iconEl.classList.remove('dragging'); };
+          iconEl.ondragover = (e) => { e.preventDefault(); };
+          iconEl.ondrop = (e) => {
+              e.preventDefault(); 
+              const fromIdx = parseInt(e.dataTransfer.getData('text/plain')); const toIdx = index;
+              if(fromIdx !== toIdx) {
+                  const moved = windowInstances.splice(fromIdx, 1)[0];
+                  windowInstances.splice(toIdx, 0, moved); renderWindowWidget();
+              }
+          };
+          cont.appendChild(iconEl);
+      });
+  }
+
+  function hexToRgb(hex) {
+      let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '22, 31, 41';
+  }
+
+  window.updateWWSettings = () => {
+      const bgHex = document.getElementById('ww-set-bg').value; const op = document.getElementById('ww-set-op').value;
+      const border = document.getElementById('ww-set-border').value; const confirm = document.getElementById('ww-set-confirm').checked;
+      state.dockSettings = { bg: bgHex, op: op, border: border, confirm: confirm };
+      document.getElementById('lbl-ww-op').innerText = op; saveProfile(); applyWWSettingsUI();
+  }
+
+  function applyWWSettingsUI() {
+      const s = state.dockSettings; const rgb = hexToRgb(s.bg);
+      document.documentElement.style.setProperty('--ww-bg', `rgba(${rgb}, ${s.op})`);
+      document.documentElement.style.setProperty('--ww-border', s.border);
+      const dock = document.getElementById('windows-widget');
+      if(state.dockPos && state.dockPos.x) { dock.style.left = state.dockPos.x; dock.style.top = state.dockPos.y; dock.style.transform = 'none'; } 
+      else { dock.style.left = '50%'; dock.style.top = '20px'; dock.style.transform = 'translateX(-50%)'; }
+      if(document.getElementById('ww-set-bg')) {
+          document.getElementById('ww-set-bg').value = s.bg; document.getElementById('ww-set-op').value = s.op;
+          document.getElementById('lbl-ww-op').innerText = s.op; document.getElementById('ww-set-border').value = s.border;
+          document.getElementById('ww-set-confirm').checked = s.confirm;
+      }
+  }
+
+  function initDockDrag(w) {
+      const handle = w.querySelector('.ww-drag-handle');
+      handle.onmousedown = handle.ontouchstart = e => {
+          let sX = (e.clientX||e.touches[0].clientX) - w.offsetLeft, sY = (e.clientY||e.touches[0].clientY) - w.offsetTop;
+          document.onmousemove = document.ontouchmove = ev => {
+              w.style.left = (ev.clientX||ev.touches[0].clientX) - sX + 'px'; w.style.top = (ev.clientY||ev.touches[0].clientY) - sY + 'px'; w.style.transform = 'none'; 
+          };
+          document.onmouseup = document.ontouchend = () => { 
+              document.onmousemove = document.ontouchmove = null; state.dockPos = { x: w.style.left, y: w.style.top }; saveProfile();
+          };
+      };
+  }
+
+  window.desktopIconAction = (action, id, folderId = null) => {
+      document.getElementById('icon-context-menu').style.display = 'none';
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`));
+      
+      if(action === 'open') {
+          if(apps[id].type === 'url') window.open(apps[id].url, '_blank'); else runApp(id, apps[id]);
+      } else if (action === 'delete') {
+          removeApp(id, currentUser);
+      } else if (action === 'move') {
+          apps[id].deskFolderId = folderId; 
+          localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+          notify(folderId ? "Перемещено в папку" : "Перемещено на рабочий стол", "success"); renderDesktop();
+      }
+  };
+
+  const showIconContextMenu = (e, id, app) => {
+      e.preventDefault(); e.stopPropagation();
+      const menu = document.getElementById('icon-context-menu');
+      let html = `
+          <div class="cm-item" onclick="desktopIconAction('open', '${id}')">🚀 Открыть</div>
+          <div class="cm-item" style="color:var(--danger)" onclick="desktopIconAction('delete', '${id}')">🗑 Удалить</div>
+          <hr style="border-color:rgba(128,128,128,0.2); margin: 5px 0;">
+          <div style="padding: 5px 15px; font-size:10px; opacity:0.6;">Переместить в:</div>
+      `;
+      const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+      let hasFolders = false;
+      for(let fId in folders) {
+          if (app.deskFolderId !== fId) {
+              hasFolders = true; html += `<div class="cm-item" onclick="desktopIconAction('move', '${id}', '${fId}')">📁 ${folders[fId].name}</div>`;
+          }
+      }
+      if(app.deskFolderId) { html += `<div class="cm-item" onclick="desktopIconAction('move', '${id}', null)">🖥 На рабочий стол</div>`; } 
+      else if(!hasFolders) { html += `<div style="padding: 5px 15px; font-size:10px; opacity:0.6;">(Нет других папок)</div>`; }
+
+      menu.innerHTML = html; menu.style.display = 'flex';
+      menu.style.left = (e.clientX || e.touches[0].clientX) + 'px'; menu.style.top = (e.clientY || e.touches[0].clientY) + 'px';
+  };
+
+  function makeIconDraggable(icon, id, isFolder = false) {
+      if(state.iconPos && state.iconPos[id]) {
+          icon.style.left = state.iconPos[id].x + 'px'; icon.style.top = state.iconPos[id].y + 'px';
+      }
+      
+      icon.onmousedown = icon.ontouchstart = (e) => {
+          if(e.button === 2 || e.target.closest('[title]')) return;
+          let sX = (e.clientX||e.touches[0].clientX) - icon.offsetLeft;
+          let sY = (e.clientY||e.touches[0].clientY) - icon.offsetTop;
+          let dragged = false;
+          
+          let moveHandler = (ev) => {
+              dragged = true; icon.classList.add('dragging');
+              icon.style.left = (ev.clientX||ev.touches[0].clientX) - sX + 'px';
+              icon.style.top = (ev.clientY||ev.touches[0].clientY) - sY + 'px';
+          };
+          let upHandler = () => {
+              document.removeEventListener('mousemove', moveHandler); document.removeEventListener('touchmove', moveHandler);
+              document.removeEventListener('mouseup', upHandler); document.removeEventListener('touchend', upHandler);
+              icon.classList.remove('dragging');
+              if(dragged) {
+                  state.iconPos[id] = {x: parseInt(icon.style.left), y: parseInt(icon.style.top)};
+                  saveProfile();
+              }
+          };
+          document.addEventListener('mousemove', moveHandler); document.addEventListener('touchmove', moveHandler);
+          document.addEventListener('mouseup', upHandler); document.addEventListener('touchend', upHandler);
+      }
+  }
+
+  window.renderDesktop = () => {
+    const deskCont = document.getElementById('desktop-icons');
+    deskCont.innerHTML = ''; 
+    const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+    
+    for(let fId in folders) {
+        const folderIcon = document.createElement('div'); folderIcon.className = 'desk-icon';
+        folderIcon.innerHTML = `
+            <div onclick="renameDesktopFolder('${fId}', event)" title="Переименовать" style="position:absolute; top:-5px; left:-5px; width:20px; height:20px; background:#f39c12; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer; z-index:5;">✏️</div>
+            <div onclick="deleteDesktopFolder('${fId}', event)" title="Удалить" style="position:absolute; top:-5px; left:18px; width:20px; height:20px; background:var(--danger); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer; z-index:5;">🗑</div>
+            <div class="desk-icon-img">📁</div>
+            <div class="desk-icon-text">${folders[fId].name}</div>
+        `;
+        folderIcon.onclick = (e) => { 
+            if(e.target.classList.contains('desk-icon-img') || e.target.classList.contains('desk-icon-text') || e.target.classList.contains('desk-icon')) openDeskFolder(fId, folders[fId].name); 
+        }
+        makeIconDraggable(folderIcon, fId, true);
+        deskCont.appendChild(folderIcon);
+    }
+
+    const myApps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+    for(let id in myApps) {
+      if (!myApps[id].deskFolderId) {
+          const appIcon = document.createElement('div'); appIcon.className = 'desk-icon';
+          appIcon.innerHTML = `<div class="desk-icon-img">${myApps[id].icon}</div><div class="desk-icon-text">${myApps[id].name}</div>`;
+          
+          appIcon.oncontextmenu = (e) => showIconContextMenu(e, id, myApps[id]);
+          let pressTimer;
+          appIcon.ontouchstart = (e) => { pressTimer = setTimeout(() => showIconContextMenu(e, id, myApps[id]), 600); };
+          appIcon.ontouchend = appIcon.ontouchcancel = () => clearTimeout(pressTimer);
+          
+          appIcon.onclick = (e) => { 
+              if(document.getElementById('icon-context-menu').style.display !== 'flex') {
+                  if (myApps[id].type === 'url') window.open(myApps[id].url, '_blank'); else runApp(id, myApps[id]); 
+              }
+          };
+          makeIconDraggable(appIcon, id);
+          deskCont.appendChild(appIcon);
+      }
+    }
+  };
+
+  window.runApp = (id, app) => { 
+      let w = document.getElementById('run-'+id); 
+      if(!w){ 
+          w = document.createElement('div'); w.id = 'run-'+id; w.className = `window ${state.theme.openAnim}`; 
+          w.style.cssText = "width:80%;height:60%;top:20%;left:10%;display:flex;"; 
+          w.innerHTML = `
+              <div class="win-header">
+                  <span>${app.icon} ${app.name}</span>
+                  <div class="win-controls">
+                      <button class="ctrl-btn" onclick="minimizeWindow('run-${id}')">_</button>
+                      <button class="ctrl-btn" onclick="maximizeWindow('run-${id}')">□</button>
+                      <button class="ctrl-btn" style="background:var(--danger);" onclick="closeWindow('run-${id}')">✕</button>
+                  </div>
+              </div>
+              <div class="win-content" style="padding:0;">
+                  <iframe id="frame-${id}" style="width:100%;height:100%;border:none;background:#fff;" sandbox="allow-scripts allow-same-origin"></iframe>
+              </div>
+          `; 
+          document.body.appendChild(w); 
+          document.getElementById('frame-'+id).srcdoc = app.code;
+          initDrag(w); initResize(w);
+          w.addEventListener('mousedown', () => { w.style.zIndex = ++highestZ; });
+          w.addEventListener('touchstart', () => { w.style.zIndex = ++highestZ; }, {passive: true});
+      } 
+      w.className = `window ${state.theme.openAnim}`;
+      w.style.display = 'flex'; w.style.zIndex = ++highestZ; 
+      document.getElementById('main-menu').classList.remove('active'); 
+      registerWindow(w.id, app.icon, app.name);
+  }
+
+  window.openWin = id => { 
+      const w=document.getElementById(id); w.className = `window ${state.theme.openAnim}`;
+      w.style.display='flex'; w.style.zIndex=++highestZ; 
+      document.getElementById('main-menu').classList.remove('active'); 
+      
+      let icon = '⚙️', title = 'Окно';
+      if(id === 'win-app-manager') { icon = '📦'; title = 'Менеджер'; }
+      if(id === 'win-app-editor') { icon = '✏️'; title = 'Редактор'; }
+      if(id === 'win-settings') { icon = '⚙️'; title = 'Настройки ОС'; }
+      if(id === 'win-ww-settings') { icon = '🎛'; title = 'Настройки дока'; }
+      if(id === 'win-terminal') { icon = '🔲'; title = 'Терминал'; setTimeout(()=>document.getElementById('term-input').focus(), 100); }
+      if(id === 'win-file-manager') { icon = '📁'; title = 'Файлы'; renderFM(); }
+      if(id === 'win-notepad') { icon = '📝'; title = document.getElementById('np-title').innerText || 'Блокнот'; }
+      
+      registerWindow(id, icon, title);
+  };
+
+  window.loadWidgetSettings = (wId) => {
+      if (!state.widgets) return;
+      if (!state.widgets[wId]) state.widgets[wId] = { visible: true, top: false };
+      document.getElementById('widget-visible').checked = state.widgets[wId].visible;
+      document.getElementById('widget-top').checked = state.widgets[wId].top;
+  };
+
+  window.updateWidgetSettings = () => {
+      const wId = document.getElementById('sel-widget').value;
+      const visible = document.getElementById('widget-visible').checked;
+      const top = document.getElementById('widget-top').checked;
+      state.widgets[wId] = { visible, top }; saveProfile(); applyWidgetSettingsToDOM();
+  };
+
+  window.applyWidgetSettingsToDOM = () => {
+      if (!state.widgets) return;
+      for (let wId in state.widgets) {
+          const el = document.getElementById(wId);
+          if (el) {
+              if (state.widgets[wId].visible) {
+                  el.style.display = (wId === 'windows-widget' || wId === 'clock-widget' || wId === 'storage-widget') ? 'flex' : 'block';
+              } else { el.style.display = 'none'; }
+              
+              if (state.widgets[wId].top) { 
+                  el.style.zIndex = '9999999'; 
+              } else {
+                  // Значения ниже, чем базовый zIndex окон (500)
+                  el.style.zIndex = '50';
+              }
+          }
+      }
+  };
+
+  window.changeWinCtrlPos = (val) => { state.theme.winCtrlPos = val; document.body.setAttribute('data-ctrl-pos', val); saveProfile(); };
+  window.changeTaskbarPos = (val) => { state.theme.taskbarPos = val; document.body.setAttribute('data-taskbar-pos', val); saveProfile(); };
+
+  window.changeCssVar = (variable, value, labelId) => { 
+      document.documentElement.style.setProperty(variable, value); 
+      if(labelId) document.getElementById(labelId).innerText = value.replace('px', ''); 
+      state.theme[variable] = value; saveProfile(); 
+  }
+
+  window.toggleLightMode = (isLight) => { 
+      changeCssVar('--win-bg-rgb', isLight ? '240, 245, 250' : '22, 31, 41'); 
+      changeCssVar('--text', isLight ? '#1a1a1a' : '#e6eef8'); 
+      state.theme['isLightMode'] = isLight; saveProfile(); 
+  }
+
+  window.changeAnim = (type, val) => { if(type === 'open') state.theme.openAnim = val; if(type === 'move') state.theme.moveAnim = val; saveProfile(); }
+
+  function applySettings() {
+    document.getElementById('desktop').style.backgroundImage = state.bgValue ? `url(${state.bgValue})` : 'none';
+    if(state.theme) {
+        for(let key in state.theme) {
+            if(key === 'isLightMode' || key === 'openAnim' || key === 'moveAnim' || key === 'winCtrlPos' || key === 'taskbarPos') continue;
+            document.documentElement.style.setProperty(key, state.theme[key]);
+            if(document.getElementById('cc-border') && key==='--win-border') document.getElementById('cc-border').value = state.theme[key];
+            if(document.getElementById('cc-accent') && key==='--accent') document.getElementById('cc-accent').value = state.theme[key];
+            if(key === '--win-opacity') { document.getElementById('cc-opacity').value = state.theme[key]; document.getElementById('lbl-op').innerText = state.theme[key]; }
+            if(key === '--glass-blur') { document.getElementById('cc-glass').value = parseInt(state.theme[key]); document.getElementById('lbl-gbl').innerText = state.theme[key]; }
+            if(key === '--blur') { document.getElementById('cc-bg-blur').value = parseInt(state.theme[key]); document.getElementById('lbl-bl').innerText = state.theme[key]; }
+            if(key === '--shadow-op') { document.getElementById('cc-shadow').value = state.theme[key]; document.getElementById('lbl-shd').innerText = state.theme[key]; }
+        }
+        document.getElementById('cc-theme-mode').checked = state.theme['isLightMode'] || false;
+        document.getElementById('sel-anim-open').value = state.theme.openAnim || 'anim-fade';
+        document.getElementById('sel-anim-move').value = state.theme.moveAnim || 'move-none';
+        document.getElementById('sel-win-ctrl-pos').value = state.theme.winCtrlPos || 'right'; document.body.setAttribute('data-ctrl-pos', state.theme.winCtrlPos || 'right');
+        document.getElementById('sel-taskbar-pos').value = state.theme.taskbarPos || 'horizontal'; document.body.setAttribute('data-taskbar-pos', state.theme.taskbarPos || 'horizontal');
+    } 
+  }
+
+  function applyWidgetState() { const w = document.getElementById('clock-widget'); w.style.left = state.widgetPos.x + 'px'; w.style.top = state.widgetPos.y + 'px'; tickClock(); }
+
+  function tickClock() { 
+      const now = new Date(); 
+      document.getElementById('clock-time').innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'); 
+      document.getElementById('clock-date').innerText = now.toLocaleDateString('ru'); 
+  }
+
+  function initWidgetDrag(w) { 
+      w.onmousedown = w.ontouchstart = e => { 
+          let sX = (e.clientX||e.touches[0].clientX) - w.offsetLeft, sY = (e.clientY||e.touches[0].clientY) - w.offsetTop; 
+          document.onmousemove = document.ontouchmove = ev => { 
+              w.style.left = (ev.clientX||ev.touches[0].clientX) - sX + 'px'; w.style.top = (ev.clientY||ev.touches[0].clientY) - sY + 'px'; 
+          }; 
+          document.onmouseup = document.ontouchend = () => { 
+              document.onmousemove = document.ontouchmove = null; state.widgetPos = {x: parseInt(w.style.left), y: parseInt(w.style.top)}; saveProfile(); 
+          }; 
+      }; 
+  }
+
+  function initDrag(w) { 
+      const h = w.querySelector('.win-header'); if(!h) return; 
+      h.onmousedown = h.ontouchstart = e => { 
+          if(e.target.tagName === 'BUTTON' || e.target.closest('.win-controls') || e.target.tagName === 'INPUT') return; 
+          w.style.zIndex = ++highestZ; 
+          w.classList.remove('fullscreen');
+          let startX = e.clientX||e.touches[0].clientX, startY = e.clientY||e.touches[0].clientY; 
+          let offX = startX - w.offsetLeft, offY = startY - w.offsetTop; 
+          let anim = state.theme.moveAnim || 'move-none';
+          const hl = document.getElementById('snap-highlight');
+
+          if(anim === 'move-scale') w.style.transform = `scale(0.95)`; else if(anim === 'move-ghost') w.style.opacity = '0.6';
+
+          document.onmousemove = document.ontouchmove = ev => { 
+              let currX = ev.clientX||ev.touches[0].clientX, currY = ev.clientY||ev.touches[0].clientY; 
+              let dx = currX - startX, dy = currY - startY; startX = currX; startY = currY;
+
+              w.style.left = Math.max(0, currX - offX) + 'px'; w.style.top = Math.max(0, currY - offY) + 'px'; 
+              
+              let ww = window.innerWidth, wh = window.innerHeight;
+              if(currX < 20 && currY < 20) { hl.style.display='block'; hl.style.left='0'; hl.style.top='0'; hl.style.width='50vw'; hl.style.height='50vh'; }
+              else if(currX > ww-20 && currY < 20) { hl.style.display='block'; hl.style.left='50vw'; hl.style.top='0'; hl.style.width='50vw'; hl.style.height='50vh'; }
+              else if(currX < 20 && currY > wh-20) { hl.style.display='block'; hl.style.left='0'; hl.style.top='50vh'; hl.style.width='50vw'; hl.style.height='50vh'; }
+              else if(currX > ww-20 && currY > wh-20) { hl.style.display='block'; hl.style.left='50vw'; hl.style.top='50vh'; hl.style.width='50vw'; hl.style.height='50vh'; }
+              else if(currX < 10) { hl.style.display='block'; hl.style.left='0'; hl.style.top='0'; hl.style.width='50vw'; hl.style.height='100vh'; }
+              else if(currX > ww-10) { hl.style.display='block'; hl.style.left='50vw'; hl.style.top='0'; hl.style.width='50vw'; hl.style.height='100vh'; }
+              else { hl.style.display='none'; }
+
+              if(anim === 'move-tilt') w.style.transform = `rotate(${dx > 0 ? 2 : -2}deg)`; else if(anim === 'move-cloth') w.style.transform = `skewX(${-dx * 0.5}deg) skewY(${-dy * 0.5}deg)`;
+          }; 
+          document.onmouseup = document.ontouchend = (ev) => { 
+              document.onmousemove = document.ontouchmove = null; document.onmouseup = document.ontouchend = null; 
+              w.style.transform = 'none'; w.style.opacity = '1'; hl.style.display = 'none';
+              
+              let cx = ev.clientX||(ev.changedTouches?ev.changedTouches[0].clientX:0);
+              let cy = ev.clientY||(ev.changedTouches?ev.changedTouches[0].clientY:0);
+              let ww = window.innerWidth, wh = window.innerHeight;
+              if(cx < 20 && cy < 20) { w.style.left='0'; w.style.top='0'; w.style.width='50vw'; w.style.height='50vh'; }
+              else if(cx > ww-20 && cy < 20) { w.style.left='50vw'; w.style.top='0'; w.style.width='50vw'; w.style.height='50vh'; }
+              else if(cx < 20 && cy > wh-20) { w.style.left='0'; w.style.top='50vh'; w.style.width='50vw'; w.style.height='50vh'; }
+              else if(cx > ww-20 && cy > wh-20) { w.style.left='50vw'; w.style.top='50vh'; w.style.width='50vw'; w.style.height='50vh'; }
+              else if(cx < 10) { w.style.left='0'; w.style.top='0'; w.style.width='50vw'; w.style.height='100vh'; }
+              else if(cx > ww-10) { w.style.left='50vw'; w.style.top='0'; w.style.width='50vw'; w.style.height='100vh'; }
+          }; 
+      }; 
+  }
+
+  function initControlCenterDrag() {
+      const cc = document.getElementById('control-center');
+      const ccHeader = cc.querySelector('.cc-header');
+      if (state.ccPos) { cc.style.left = state.ccPos.left; cc.style.top = state.ccPos.top; cc.style.right = 'auto'; cc.style.bottom = 'auto'; } 
+      else { cc.style.right = '20px'; cc.style.bottom = '90px'; }
+      cc.addEventListener('mousedown', () => { cc.style.zIndex = ++highestZ; });
+      cc.addEventListener('touchstart', () => { cc.style.zIndex = ++highestZ; }, {passive: true});
+
+      ccHeader.onmousedown = ccHeader.ontouchstart = (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('.win-controls')) return;
+          cc.style.zIndex = ++highestZ;
+          let sX = (e.clientX || e.touches[0].clientX); let sY = (e.clientY || e.touches[0].clientY);
+          let startLeft = cc.offsetLeft; let startTop = cc.offsetTop;
+          document.onmousemove = document.ontouchmove = (ev) => {
+              if(cc.classList.contains('fullscreen')) return;
+              let currX = (ev.clientX || ev.touches[0].clientX); let currY = (ev.clientY || ev.touches[0].clientY);
+              cc.style.left = startLeft + (currX - sX) + 'px'; cc.style.top = startTop + (currY - sY) + 'px';
+              cc.style.right = 'auto'; cc.style.bottom = 'auto'; 
+          };
+          document.onmouseup = document.ontouchend = () => {
+              document.onmousemove = document.ontouchmove = null; document.onmouseup = document.ontouchend = null;
+              state.ccPos = { left: cc.style.left, top: cc.style.top }; saveProfile();
+          };
+      };
+  }
+
+  function initResize(w) { 
+      let r = w.querySelector('.resize-handle'); 
+      if(!r) { r = document.createElement('div'); r.className = 'resize-handle'; w.appendChild(r); } 
+      r.onmousedown = r.ontouchstart = e => { 
+          e.stopPropagation(); e.preventDefault(); w.style.zIndex = ++highestZ; 
+          let sW = w.offsetWidth, sH = w.offsetHeight, sX = e.clientX||e.touches[0].clientX, sY = e.clientY||e.touches[0].clientY; 
+          document.onmousemove = document.ontouchmove = ev => { 
+              if(w.classList.contains('fullscreen')) return; 
+              w.style.width = Math.max(250, sW + ((ev.clientX||ev.touches[0].clientX) - sX)) + 'px'; 
+              w.style.height = Math.max(150, sH + ((ev.clientY||ev.touches[0].clientY) - sY)) + 'px'; 
+          }; 
+          document.onmouseup = document.ontouchend = () => { document.onmousemove = document.ontouchmove = null; document.onmouseup = document.ontouchend = null; }; 
+      }; 
+  }
+
+  window.fullReset = () => { if(confirm("ВНИМАНИЕ! Удалить ВСЁ?")) { localStorage.clear(); location.reload(); }};
+  
+  window.toggleControlCenter = (e) => { 
+      if(e) e.stopPropagation(); 
+      const cc = document.getElementById('control-center'); 
+      cc.style.display = cc.style.display === 'flex' ? 'none' : 'flex'; 
+      if (cc.style.display === 'flex') cc.style.zIndex = ++highestZ;
+  }
+  
+  document.getElementById('file-upload').onchange = e => { 
+      const f=e.target.files[0]; if(!f)return; const r=new FileReader(); 
+      r.onload=ev=>{ state.bgValue=ev.target.result; saveProfile(); applySettings(); notify("Обои установлены", "success"); }; 
+      r.readAsDataURL(f); e.target.value=''; 
+  };
+
+})();
+</script>
+</body>
+</html>
