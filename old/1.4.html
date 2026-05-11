@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS</title>
+<style>
+  :root {
+    /* Динамические переменные */
+    --accent: #2b8cff; 
+    --danger: #ff4d4d; 
+    --text: #e6eef8; 
+    --win-bg-rgb: 22, 31, 41; 
+    --win-opacity: 0.85;
+    --glass-blur: 15px;
+    --win-radius: 16px; 
+    --btn-radius: 10px;
+    --blur: 0px; 
+  }
+
+  * { box-sizing: border-box; -webkit-touch-callout: none; font-family: system-ui, -apple-system, sans-serif; transition: border-radius 0.3s, background 0.3s, color 0.3s; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: #000; color: var(--text); user-select: none; touch-action: manipulation; }
+  
+  /* Рабочий стол */
+  .desktop { position: fixed; inset: 0; background-size: cover; background-position: center; transition: filter 0.5s, background 0.5s; filter: blur(var(--blur)); z-index: 1; }
+
+  /* Панель задач */
+  .taskbar-container { position: fixed; bottom: 100px; left: 20px; z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .taskbar { display: none; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); padding: 12px; border-radius: var(--win-radius); border: 1px solid rgba(128,128,128,0.2); flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .taskbar.active { display: flex; }
+  
+  .burger { width: 55px; height: 55px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.4); z-index: 10000; }
+
+  /* Кнопки приложений */
+  .icon-btn { width: 48px; height: 48px; border-radius: var(--btn-radius); background: rgba(128,128,128,0.15); display: flex; align-items: center; justify-content: center; font-size: 22px; position: relative; cursor: pointer; }
+  .app-icon-remove { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+
+  /* Окна */
+  .window { position: absolute; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); border-radius: var(--win-radius); border: 1px solid rgba(128,128,128,0.2); display: none; flex-direction: column; overflow: hidden; z-index: 500; min-width: 280px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .win-header { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: rgba(128,128,128,0.1); cursor: move; touch-action: none; border-bottom: 1px solid rgba(128,128,128,0.1); }
+  .ctrl-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(128,128,128,0.2); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .win-content { flex: 1; overflow: auto; padding: 15px; }
+
+  /* Инфо-панель (Виджеты) */
+  .info-bar { position: fixed; bottom: 25px; left: 0; width: 100%; display: flex; justify-content: center; gap: 8px; font-size: 11px; z-index: 9998; pointer-events: none; }
+  .info-unit { background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); padding: 5px 12px; border-radius: var(--btn-radius); border: 1px solid rgba(128,128,128,0.2); }
+
+  /* Конструктор виджетов */
+  .config-zone { background: rgba(128,128,128,0.1); padding: 10px; border-radius: var(--btn-radius); display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; border: 1px dashed rgba(128,128,128,0.3); min-height: 50px; }
+  .drag-item { background: var(--accent); padding: 6px 14px; border-radius: var(--btn-radius); font-size: 12px; cursor: pointer; color: #fff; }
+  .drag-item.hidden { background: rgba(128,128,128,0.3); opacity: 0.7; color: var(--text); }
+
+  /* Галерея */
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0; }
+  .gal-item { height: 65px; border-radius: 8px; background-size: cover; background-position: center; cursor: pointer; border: 2px solid transparent; position: relative; }
+  .gal-item.active { border-color: var(--accent); }
+  .del-img { position: absolute; top: 2px; right: 2px; background: var(--danger); color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; }
+  .add-btn { border: 2px dashed rgba(128,128,128,0.5); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; height: 65px; border-radius: 8px; }
+
+  /* Элементы управления */
+  .tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(128,128,128,0.2); overflow-x: auto; padding-bottom: 5px; }
+  .tab-link { padding: 8px 15px; font-size: 13px; opacity: 0.5; white-space: nowrap; cursor: pointer; border-radius: var(--btn-radius); }
+  .tab-link.active { opacity: 1; background: rgba(128,128,128,0.2); color: var(--accent); }
+  
+  textarea, input[type="text"], select { width: 100%; padding: 12px; background: rgba(128,128,128,0.1); border: 1px solid rgba(128,128,128,0.3); color: var(--text); border-radius: var(--btn-radius); margin-bottom: 10px; font-size: 14px; outline: none; }
+  .btn { padding: 12px; border-radius: var(--btn-radius); border: none; background: var(--accent); color: white; width: 100%; font-weight: bold; cursor: pointer; margin: 5px 0; }
+  .btn:active { opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div id="desktop" class="desktop"></div>
+<div id="info-bar" class="info-bar"></div>
+<input type="file" id="file-upload" accept="image/*" style="display:none">
+
+<div class="taskbar-container">
+  <div class="taskbar" id="main-menu">
+    <div class="icon-btn" onclick="openWin('win-fm')">📁</div>
+    <div class="icon-btn" onclick="openWin('win-note')">📝</div>
+    <div class="icon-btn" onclick="openWin('win-settings')">⚙️</div>
+    <div id="custom-apps-icons" style="display: contents;"></div>
+  </div>
+  <div class="burger" id="burger-btn">📱</div>
+</div>
+
+<div id="win-settings" class="window" style="width:90%; height:85%; top:5%; left:5%;">
+  <div class="win-header">
+    <span>Настройки</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-settings">✕</button>
+  </div>
+  <div class="win-content">
+    <div class="tabs">
+      <div class="tab-link active" onclick="switchTab(this, 'tab-desk')">Экран</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-widgets')">Виджеты</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-theme')">Стиль</div>
+      <div class="tab-link" onclick="switchTab(this, 'tab-system')">Система</div>
+    </div>
+    
+    <div id="tab-desk" class="tab-content">
+      <label style="font-size:12px; opacity:0.7">Галерея фонов:</label>
+      <div class="gallery-grid" id="user-gallery">
+        <div class="add-btn" onclick="document.getElementById('file-upload').click()">+</div>
+      </div>
+      <label style="font-size:12px; opacity:0.7">Цвет фона:</label>
+      <input type="color" id="bg-color-pick" onchange="setSolidColor(this.value)" style="width:100%; height:40px; border:none; background:none; cursor:pointer;">
+      <button class="btn" onclick="toggleBlur()" style="margin-top:10px; background:rgba(128,128,128,0.2); color:var(--text)">Вкл/Выкл Блюр</button>
+    </div>
+
+    <div id="tab-widgets" class="tab-content" style="display:none">
+      <label style="font-size:11px">АКТИВНЫЕ (клик для скрытия):</label>
+      <div id="active-units" class="config-zone"></div>
+      <label style="font-size:11px">СКРЫТЫЕ:</label>
+      <div id="hidden-units" class="config-zone"></div>
+    </div>
+
+    <div id="tab-theme" class="tab-content" style="display:none">
+      <label style="font-size:12px">Цветовая тема:</label>
+      <select id="sel-theme" onchange="changeTheme(this.value)">
+        <option value="t1">1. Тёмная классика</option>
+        <option value="t2">2. Светлый день</option>
+        <option value="t3">3. Хакер</option>
+        <option value="t4">4. Неон</option>
+        <option value="t5">5. Океан</option>
+        <option value="t6">6. Закат</option>
+        <option value="t7">7. Кровавая луна</option>
+        <option value="t8">8. Лес</option>
+        <option value="t9">9. Монохром</option>
+        <option value="t10">10. Барби</option>
+      </select>
+      <label style="font-size:12px">Форма интерфейса:</label>
+      <select id="sel-form" onchange="changeForm(this.value)">
+        <option value="f1">1. Квадратная</option>
+        <option value="f2">2. Острая</option>
+        <option value="f3">3. Стандартная</option>
+        <option value="f4">4. Плавная</option>
+        <option value="f5">5. Круглая</option>
+      </select>
+    </div>
+
+    <div id="tab-system" class="tab-content" style="display:none">
+      <p id="cur-user" style="font-weight:bold"></p>
+      <button class="btn" style="background:var(--danger)" onclick="fullReset()">Полный сброс системы</button>
+    </div>
+  </div>
+</div>
+
+<div id="win-note" class="window" style="width:90%; height:80%; top:5%; left:5%;">
+  <div class="win-header">
+    <span>App IDE</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-note">✕</button>
+  </div>
+  <div class="win-content">
+    <input type="text" id="app-name-input" placeholder="Название (напр. Калькулятор)">
+    <input type="text" id="app-icon-input" placeholder="Эмодзи иконка (напр. 🧮)">
+    <textarea id="note-pad" style="height:200px" placeholder="HTML/JS код приложения..."></textarea>
+    <button class="btn" onclick="installAppFromNote()">🚀 Установить в меню</button>
+  </div>
+</div>
+
+<div id="win-fm" class="window" style="width:85%; height:60%; top:10%; left:7%;">
+  <div class="win-header"><span>Файлы</span><button class="ctrl-btn" style="background:var(--danger)" data-close="win-fm">✕</button></div>
+  <div class="win-content" id="fm-list"></div>
+</div>
+
+<script>
+(function() {
+  let highestZ = 1000;
+  const labels = { hours:'Часы', minutes:'Мин', seconds:'Сек', battery:'Заряд', date:'Дата', weekday:'День' };
+  
+  const THEMES = {
+    t1: { accent: '#2b8cff', winRgb: '22, 31, 41', text: '#e6eef8' },
+    t2: { accent: '#0066cc', winRgb: '240, 240, 245', text: '#1a1a1a' },
+    t3: { accent: '#00ff00', winRgb: '0, 0, 0', text: '#00ff00' },
+    t4: { accent: '#ff00ff', winRgb: '30, 10, 40', text: '#00ffff' },
+    t5: { accent: '#00e5ff', winRgb: '10, 30, 45', text: '#e0f7fa' },
+    t6: { accent: '#ff6600', winRgb: '40, 20, 15', text: '#ffe0cc' },
+    t7: { accent: '#ff3333', winRgb: '25, 5, 5', text: '#ffcccc' },
+    t8: { accent: '#88cc00', winRgb: '15, 30, 20', text: '#eeffcc' },
+    t9: { accent: '#888888', winRgb: '35, 35, 35', text: '#ffffff' },
+    t10: { accent: '#ff1493', winRgb: '45, 20, 35', text: '#ffe6f2' }
+  };
+
+  const FORMS = {
+    f1: { win: '0px', btn: '0px' },
+    f2: { win: '8px', btn: '4px' },
+    f3: { win: '16px', btn: '10px' },
+    f4: { win: '24px', btn: '16px' },
+    f5: { win: '32px', btn: '24px' }
+  };
+
+  let state = JSON.parse(localStorage.getItem('websaos_full_config')) || {
+    bgType: 'image', bgValue: '', userImages: [], 
+    themeId: 't1', formId: 'f3', blur: '0px',
+    infoLayout: ['hours', 'minutes', 'battery'],
+    hiddenLayout: ['seconds', 'date', 'weekday']
+  };
+
+  let currentUser = localStorage.getItem('websaos_user') || 'Admin';
+
+  function init() {
+    applySettings();
+    renderGallery();
+    renderConfig();
+    updateFM();
+    loadCustomApps();
+    initDrag();
+
+    document.getElementById('cur-user').textContent = "Пользователь: " + currentUser;
+    document.getElementById('burger-btn').onclick = () => document.getElementById('main-menu').classList.toggle('active');
+    
+    // Загрузка фото
+    document.getElementById('file-upload').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          state.userImages.push(ev.target.result);
+          save(); renderGallery();
+        } catch(e) { alert("Память переполнена! Удалите старые фото."); }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    setInterval(tick, 1000); tick();
+    
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-close]');
+      if (btn) document.getElementById(btn.getAttribute('data-close')).style.display = 'none';
+    });
+  }
+
+  // --- ФОН И ГАЛЕРЕЯ ---
+  function renderGallery() {
+    const container = document.getElementById('user-gallery');
+    const addBtn = container.querySelector('.add-btn');
+    container.innerHTML = ''; container.appendChild(addBtn);
+    state.userImages.forEach((src, i) => {
+      const div = document.createElement('div');
+      div.className = `gal-item ${state.bgValue === src ? 'active' : ''}`;
+      div.style.backgroundImage = `url(${src})`;
+      div.onclick = () => { state.bgType = 'image'; state.bgValue = src; save(); applySettings(); renderGallery(); };
+      div.innerHTML = `<div class="del-img" onclick="removeImg(${i}, event)">✕</div>`;
+      container.appendChild(div);
+    });
+  }
+
+  window.removeImg = (i, e) => {
+    e.stopPropagation();
+    state.userImages.splice(i, 1);
+    save(); renderGallery();
+  };
+
+  window.setSolidColor = (col) => {
+    state.bgType = 'color'; state.bgValue = col;
+    save(); applySettings(); renderGallery();
+  };
+
+  // --- ВИДЖЕТЫ ---
+  function renderConfig() {
+    const a = document.getElementById('active-units'), h = document.getElementById('hidden-units');
+    a.innerHTML = ''; h.innerHTML = '';
+    state.infoLayout.forEach(id => a.appendChild(createUnit(id, true)));
+    state.hiddenLayout.forEach(id => h.appendChild(createUnit(id, false)));
+  }
+
+  function createUnit(id, active) {
+    const div = document.createElement('div');
+    div.className = `drag-item ${active ? '' : 'hidden'}`;
+    div.textContent = labels[id];
+    div.onclick = () => {
+      if(active) { state.infoLayout = state.infoLayout.filter(x=>x!==id); state.hiddenLayout.push(id); }
+      else { state.hiddenLayout = state.hiddenLayout.filter(x=>x!==id); state.infoLayout.push(id); }
+      save(); applySettings(); renderConfig();
+    };
+    return div;
+  }
+
+  function tick() {
+    const bar = document.getElementById('info-bar');
+    const now = new Date();
+    const draw = (batt) => {
+      bar.innerHTML = '';
+      state.infoLayout.forEach(key => {
+        let v = '';
+        if(key==='hours') v = now.getHours().toString().padStart(2,'0');
+        if(key==='minutes') v = now.getMinutes().toString().padStart(2,'0');
+        if(key==='seconds') v = now.getSeconds().toString().padStart(2,'0');
+        if(key==='battery') v = `🔋${batt}%`;
+        if(key==='date') v = now.toLocaleDateString();
+        if(key==='weekday') v = now.toLocaleDateString('ru',{weekday:'short'});
+        bar.insertAdjacentHTML('beforeend', `<div class="info-unit">${v}</div>`);
+      });
+    };
+    if (navigator.getBattery) navigator.getBattery().then(b => draw(Math.floor(b.level*100)));
+    else draw('--');
+  }
+
+  // --- СТИЛИ И СИСТЕМА ---
+  function applySettings() {
+    const root = document.documentElement, desk = document.getElementById('desktop');
+    const t = THEMES[state.themeId], f = FORMS[state.formId];
+    root.style.setProperty('--accent', t.accent);
+    root.style.setProperty('--win-bg-rgb', t.winRgb);
+    root.style.setProperty('--text', t.text);
+    root.style.setProperty('--win-radius', f.win);
+    root.style.setProperty('--btn-radius', f.btn);
+    root.style.setProperty('--blur', state.blur);
+
+    if(state.bgType==='color') { desk.style.backgroundImage='none'; desk.style.backgroundColor=state.bgValue; }
+    else { desk.style.backgroundImage=`url(${state.bgValue})`; }
+  }
+
+  window.changeTheme = id => { state.themeId = id; save(); applySettings(); };
+  window.changeForm = id => { state.formId = id; save(); applySettings(); };
+  window.toggleBlur = () => { state.blur = state.blur==='15px'?'0px':'15px'; save(); applySettings(); };
+
+  function save() { localStorage.setItem('websaos_full_config', JSON.stringify(state)); }
+
+  // --- ОКНА И ПРИЛОЖЕНИЯ ---
+  window.openWin = id => { const w=document.getElementById(id); w.style.display='flex'; w.style.zIndex=++highestZ; };
+  window.switchTab = (el, id) => {
+    document.querySelectorAll('.tab-content').forEach(c=>c.style.display='none');
+    document.querySelectorAll('.tab-link').forEach(l=>l.classList.remove('active'));
+    document.getElementById(id).style.display='block'; el.classList.add('active');
+  };
+
+  window.installAppFromNote = () => {
+    const name = document.getElementById('app-name-input').value || 'App';
+    const icon = document.getElementById('app-icon-input').value || '📦';
+    const code = document.getElementById('note-pad').value;
+    if(!code) return;
+    const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+    const id = 'app_'+Date.now();
+    apps[id] = { name, icon, code };
+    localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+    loadCustomApps();
+  };
+
+  window.loadCustomApps = () => {
+    const cont = document.getElementById('custom-apps-icons');
+    cont.innerHTML = '';
+    const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+    for(let id in apps) {
+      const div = document.createElement('div');
+      div.className = 'icon-btn';
+      div.innerHTML = `<span>${apps[id].icon}</span><div class="app-icon-remove" onclick="removeApp('${id}', event)">×</div>`;
+      div.onclick = () => runApp(id, apps[id]);
+      cont.appendChild(div);
+    }
+  };
+
+  window.removeApp = (id, e) => { e.stopPropagation(); const apps=JSON.parse(localStorage.getItem(`apps_${currentUser}`)); delete apps[id]; localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps)); loadCustomApps(); };
+
+  function runApp(id, app) {
+    let win = document.getElementById('run-'+id);
+    if(!win) {
+      win = document.createElement('div'); win.id = 'run-'+id; win.className = 'window';
+      win.style.cssText = "width:80%; height:60%; top:20%; left:10%; display:flex;";
+      win.innerHTML = `<div class="win-header"><span>${app.name}</span><button class="ctrl-btn" onclick="this.closest('.window').remove()">✕</button></div><div class="win-content">${app.code}</div>`;
+      document.body.appendChild(win); initDrag();
+    }
+    win.style.display = 'flex'; win.style.zIndex = ++highestZ;
+  }
+
+  function updateFM() {
+    document.getElementById('fm-list').innerHTML = `<p style="opacity:0.5; font-size:12px">Файловая система SAOS активна.</p>`;
+  }
+
+  window.fullReset = () => { if(confirm("Сбросить всё?")) { localStorage.clear(); location.reload(); }};
+
+  function initDrag() {
+    document.querySelectorAll('.win-header').forEach(h => {
+      h.onmousedown = h.ontouchstart = (e) => {
+        const win = h.parentElement; win.style.zIndex = ++highestZ;
+        let startX = (e.clientX || e.touches[0].clientX) - win.offsetLeft;
+        let startY = (e.clientY || e.touches[0].clientY) - win.offsetTop;
+        document.onmousemove = document.ontouchmove = (ev) => {
+          win.style.left = ((ev.clientX || ev.touches[0].clientX) - startX) + 'px';
+          win.style.top = ((ev.clientY || ev.touches[0].clientY) - startY) + 'px';
+        };
+        document.onmouseup = document.ontouchend = () => document.onmousemove = document.ontouchmove = null;
+      };
+    });
+  }
+
+  window.onload = init;
+})();
+</script>
+</body>
+</html>
