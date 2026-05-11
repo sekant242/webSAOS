@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>WebOS</title>
+<style>
+  :root{
+    --accent:#2b8cff;
+    --bg:#0f1720;
+    --panel: rgba(255,255,255,0.06);
+    --glass: rgba(255,255,255,0.08);
+    --text:#e6eef8;
+  }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:'Inter', Roboto, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow: hidden;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  
+  /* Desktop Area */
+  .desktop{
+    position:relative;
+    width:100%;
+    height:100vh;
+    overflow:hidden;
+    background-size:cover;
+    background-position:center;
+    transition:background-image .25s ease;
+  }
+
+  /* Taskbar / Dock */
+  .taskbar{
+    position:fixed;
+    left:50%;
+    bottom:15px;
+    transform: translateX(-50%);
+    height:64px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:0 15px;
+    background: rgba(15, 23, 32, 0.7);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+    z-index:100;
+  }
+
+  .icon-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .icon{
+    width:44px;
+    height:44px;
+    border-radius:10px;
+    background:var(--panel);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .icon:hover { background: rgba(255,255,255,0.15); transform: translateY(-3px); }
+  .icon:active{ transform: scale(0.9); }
+  
+  .label{ font-size:10px; margin-top:4px; opacity: 0.8; }
+
+  /* Window / Modal System */
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+    display:none; /* Toggled via JS */
+    align-items:center;
+    justify-content:center;
+    z-index:150;
+    padding:20px;
+  }
+  .modal{
+    width:100%;
+    max-width:850px;
+    background: #1a222c;
+    border-radius:14px;
+    padding:20px;
+    box-shadow:0 25px 70px rgba(0,0,0,0.8);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .modal-header h2 { margin: 0; font-size: 1.2rem; }
+
+  /* File Manager Specifics */
+  .fm-container {
+    display: flex;
+    gap: 15px;
+    flex: 1;
+    min-height: 350px;
+  }
+  .fm-sidebar {
+    width: 180px;
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .side-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+  .side-item:hover { background: var(--accent); }
+
+  .fm-main {
+    flex: 1;
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+    padding: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    grid-auto-rows: max-content;
+    gap: 15px;
+    overflow-y: auto;
+  }
+  
+  .file-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .file-item:hover { background: var(--panel); }
+  .file-icon { font-size: 36px; margin-bottom: 8px; }
+  .file-name { font-size: 12px; word-break: break-word; }
+
+  /* Forms & Buttons */
+  .btn {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.2); }
+  
+  input[type="text"] {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .fm-sidebar { display: none; }
+    .modal { height: 80vh; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="desktop" class="desktop">
+    <div style="padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+      <div class="icon-wrapper" onclick="openSettings()">
+        <div class="icon">⚙️</div>
+        <div class="label">Настройки</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="taskbar">
+    <div class="icon-wrapper">
+      <div class="icon">🏠</div>
+    </div>
+    <div class="icon-wrapper" onclick="openFileManager()">
+      <div class="icon">🗂️</div>
+      <div class="label">Файлы</div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Настройки фона</h2>
+        <button class="btn ghost" onclick="closeAllModals()">✕</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <p style="font-size: 14px; opacity: 0.7;">Галерея:</p>
+          <div id="gallery" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <p style="font-size: 14px; opacity: 0.7;">Свой URL:</p>
+          <input type="text" id="urlInput" placeholder="https://...">
+          <button class="btn" onclick="applyBgUrl()">Применить</button>
+          <hr style="width: 100%; opacity: 0.1;">
+          <p style="font-size: 14px; opacity: 0.7;">Загрузить файл:</p>
+          <input type="file" id="fileInput" accept="image/*">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="fmModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📁 Проводник</h2>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn ghost" onclick="document.getElementById('uploadFile').click()">+ Загрузить</button>
+          <input type="file" id="uploadFile" hidden onchange="uploadToVirtual(this)">
+          <button class="btn ghost" onclick="closeAllModals()">✕</button>
+        </div>
+      </div>
+      <div class="fm-container">
+        <div class="fm-sidebar">
+          <div class="side-item">💻 Этот ПК</div>
+          <div class="side-item">📂 Документы</div>
+          <div class="side-item">🖼️ Изображения</div>
+          <div class="side-item">📥 Загрузки</div>
+        </div>
+        <div id="fileGrid" class="fm-main">
+          </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const desktop = document.getElementById('desktop');
+  const fileGrid = document.getElementById('fileGrid');
+  
+  // --- Виртуальная файловая система ---
+  let myFiles = [
+    { name: 'System', type: 'folder' },
+    { name: 'README.txt', type: 'file' },
+    { name: 'Wallpaper.jpg', type: 'file' },
+    { name: 'Documents', type: 'folder' }
+  ];
+
+  // --- Инициализация ---
+  window.onload = () => {
+    loadSavedBg();
+    renderGallery();
+    renderFiles();
+  };
+
+  // --- Функции окон ---
+  function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; }
+  function openFileManager() { document.getElementById('fmModal').style.display = 'flex'; }
+  function closeAllModals() {
+    document.querySelectorAll('.modal-backdrop').forEach(m => m.style.display = 'none');
+  }
+
+  // Закрытие по клику на фон
+  window.onclick = (e) => {
+    if (e.target.classList.contains('modal-backdrop')) closeAllModals();
+  };
+
+  // --- Логика файлов ---
+  function renderFiles() {
+    fileGrid.innerHTML = '';
+    myFiles.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      const icon = f.type === 'folder' ? '📁' : '📄';
+      div.innerHTML = `<div class="file-icon">${icon}</div><div class="file-name">${f.name}</div>`;
+      div.onclick = () => alert('Файл "' + f.name + '" открыт (имитация)');
+      fileGrid.appendChild(div);
+    });
+  }
+
+  function uploadToVirtual(input) {
+    if (input.files && input.files[0]) {
+      const newFile = { name: input.files[0].name, type: 'file' };
+      myFiles.push(newFile);
+      renderFiles();
+    }
+  }
+
+  // --- Логика фона ---
+  const galleryImgs = [
+    'https://picsum.photos/id/10/1200/800',
+    'https://picsum.photos/id/20/1200/800',
+    'https://picsum.photos/id/28/1200/800'
+  ];
+
+  function renderGallery() {
+    const container = document.getElementById('gallery');
+    galleryImgs.forEach(src => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.width = '80px';
+      img.style.height = '50px';
+      img.style.borderRadius = '4px';
+      img.style.cursor = 'pointer';
+      img.onclick = () => setBg(src);
+      container.appendChild(img);
+    });
+  }
+
+  function setBg(url) {
+    desktop.style.backgroundImage = `url('${url}')`;
+    localStorage.setItem('webos_bg', url);
+  }
+
+  function applyBgUrl() {
+    const val = document.getElementById('urlInput').value;
+    if (val) setBg(val);
+  }
+
+  function loadSavedBg() {
+    const saved = localStorage.getItem('webos_bg');
+    if (saved) desktop.style.backgroundImage = `url('${saved}')`;
+  }
+
+  document.getElementById('fileInput').onchange = function(e) {
+    const reader = new FileReader();
+    reader.onload = (ev) => setBg(ev.target.result);
+    reader.readAsDataURL(e.target.files[0]);
+  };
+</script>
+
+</body>
+</html>
