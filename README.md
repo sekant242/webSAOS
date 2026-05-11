@@ -38,7 +38,7 @@
 ## 📝 Changelog
 
 <details>
-<summary><b>Версия 1.13: Modular Edition</b> (текущая)</summary>
+<summary><b>Версия 1.13: Modular Edition</b></summary>
 
 - **Модульная архитектура** – код разделён на отдельные файлы (`core.js`, `vfs.js`, `themes.js`, `game_service.js`, `style.css`), что упрощает поддержку и расширение.
 - **Система визуальных тем (пресетов)** – добавлено более 20 готовых тем в `themes.js` и `themes.css`, включая:
@@ -84,7 +84,7 @@
 </details>
 
 <details>
-<summary><b>Версии 1.12 – 1.10</b> (кликните, чтобы развернуть)</summary>
+<summary><b>Версии 1.12 – 1.10</b> </summary>
 
 **1.12**  
 - Анимации открытия окон (fade, zoom, slide, flip, page).  
@@ -119,7 +119,7 @@
 </details>
 
 <details>
-<summary><b>Версии 1.9 – 1.4</b> (от первых релизов до кастомизации)</summary>
+<summary><b>Версии 1.9 – 1.4</b> </summary>
 
 **1.9**  
 - Раздельные радиусы углов; слайдеры размера иконок/шрифта.  
