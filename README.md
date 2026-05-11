@@ -2,6 +2,7 @@
 браузерная операционная система
 
 ## Версии до 2.0
+[Версия 1.4](https://sekant242.github.io/webSAOS/old/1.4.html) <br>
 [Версия 1.1](https://sekant242.github.io/webSAOS/old/1.1.html) <br>
 [Версия 1.0](https://sekant242.github.io/webSAOS/old/1.0.html) <br>
 
