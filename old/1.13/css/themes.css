@@ -1,0 +1,124 @@
+/* =========================================
+   СТРУКТУРНЫЕ ВИЗУАЛЬНЫЕ ТЕМЫ ОС
+========================================= */
+
+/* --- Retro (Windows 1.0, 2.0, 3.1) --- */
+.theme-retro * { font-family: 'Courier New', monospace; font-weight: bold; }
+.theme-retro .window { border: 2px solid var(--win-border); border-radius: 0 !important; box-shadow: none; background: #fff; }
+.theme-retro .win-header { background: #fff; color: #000; border-bottom: 2px solid #000; border-radius: 0; justify-content: center; text-transform: uppercase; }
+.theme-retro .ctrl-btn { border: 1px solid #000; border-radius: 0; background: #fff; color: #000; font-family: monospace; }
+.theme-retro .taskbar { border-radius: 0; border: 2px solid #000; background: #fff; }
+
+/* --- Classic (Windows 95, 98, 2000) --- */
+.theme-classic * { font-family: 'Tahoma', sans-serif; }
+.theme-classic .window { border: 2px outset #dfdfdf; border-radius: 0 !important; background: #c0c0c0; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+.theme-classic .win-header { background: #000080; color: #fff; border: none; border-radius: 0; font-weight: bold; }
+.theme-classic .ctrl-btn { border: 2px outset #dfdfdf; background: #c0c0c0; color: #000; border-radius: 0; font-size: 14px; font-weight: bold; }
+.theme-classic .ctrl-btn:active { border-style: inset; }
+.theme-classic .taskbar-container { bottom: 0; left: 0; width: 100%; }
+.theme-classic .taskbar { width: 100%; border-radius: 0; background: #c0c0c0; border-top: 2px outset #dfdfdf; border-bottom: none; border-left: none; border-right: none; padding: 5px; }
+.theme-classic .burger { background: #c0c0c0; color: #000; border: 2px outset #dfdfdf; border-radius: 0; font-size: 14px; font-weight: bold; width: auto; padding: 0 10px; display: flex; gap: 5px;}
+.theme-classic .burger:active { border-style: inset; }
+
+/* --- Windows XP (Luna) --- */
+.theme-winxp .window { border: 3px solid #0055e5; border-radius: 8px 8px 0 0 !important; background: #ece9d8; box-shadow: 2px 5px 15px rgba(0,0,0,0.4); }
+.theme-winxp .win-header { background: linear-gradient(to bottom, #0058e6 0%, #3a93ff 10%, #0058e6 100%); color: #fff; text-shadow: 1px 1px 2px #000; border: none; font-weight: bold; font-family: 'Trebuchet MS', sans-serif; font-size: 14px; height: 35px;}
+.theme-winxp .ctrl-btn { border-radius: 3px; border: 1px solid #fff; color: #fff; background: transparent; width: 22px; height: 22px; margin-top: 2px; }
+.theme-winxp .ctrl-btn[onclick*="close"] { background: #e53935; }
+.theme-winxp .taskbar-container { bottom: 0; left: 0; width: 100%; }
+.theme-winxp .taskbar { width: 100%; border-radius: 0; background: linear-gradient(to bottom, #245edb 0%, #3f8cf3 10%, #245edb 20%, #245edb 90%, #333 100%); border: none; padding: 0; height: 40px; align-items: center;}
+.theme-winxp .burger { background: linear-gradient(to bottom, #3b913d 0%, #4cb84f 50%, #3b913d 100%); color: #fff; border-radius: 0 15px 15px 0; font-style: italic; font-weight: bold; font-family: 'Franklin Gothic Medium', sans-serif; box-shadow: 2px 0 5px rgba(0,0,0,0.5); width: auto; padding: 0 20px; height: 40px; }
+
+/* --- Aero (Windows Vista, 7) --- */
+.theme-aero .window { border: 1px solid rgba(255,255,255,0.5); background: rgba(220, 230, 245, 0.9); box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 0 10px rgba(255,255,255,0.5); }
+.theme-aero .win-header { background: rgba(255,255,255,0.4); backdrop-filter: blur(10px); color: #000; text-shadow: 0 0 5px #fff; border-bottom: 1px solid rgba(255,255,255,0.5); height: 35px; }
+.theme-aero .ctrl-btn { border-radius: 4px; border: 1px solid rgba(0,0,0,0.2); width: 35px; height: 20px; border-top: none; margin-top: -5px; box-shadow: inset 0 -5px 10px rgba(255,255,255,0.5); }
+.theme-aero .ctrl-btn[onclick*="close"] { background: rgba(255, 50, 50, 0.8); color: white;}
+.theme-aero .taskbar-container { bottom: 0; left: 0; width: 100%; }
+.theme-aero .taskbar { width: 100%; border-radius: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(15px); border-top: 1px solid rgba(255,255,255,0.3); padding: 5px; height: 50px;}
+.theme-aero .burger { background: transparent; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); box-shadow: 0 0 10px rgba(255,255,255,0.5); width: 44px; height: 44px; margin-top: -15px;}
+
+/* --- Metro (Windows 8) --- */
+.theme-metro .window { border: 2px solid var(--accent); border-radius: 0 !important; background: #fff; box-shadow: none; color: #000; }
+.theme-metro .win-header { background: #fff; color: #000; justify-content: center; font-family: 'Segoe UI', sans-serif;}
+.theme-metro .ctrl-btn { background: #fff; color: #000; border-radius: 0; width: 30px; height: 30px; border: none; }
+.theme-metro .ctrl-btn:hover { background: #ddd; }
+.theme-metro .ctrl-btn[onclick*="close"]:hover { background: #e51400; color: #fff;}
+
+/* --- macOS --- */
+.theme-macos .window { border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.theme-macos .win-header { background: rgba(250,250,250,0.1); justify-content: center; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.theme-macos .win-controls { position: absolute; left: 15px; display: flex; gap: 8px; }
+.theme-macos .ctrl-btn { color: transparent; border-radius: 50%; width: 13px; height: 13px; padding: 0; }
+.theme-macos .ctrl-btn:hover { color: rgba(0,0,0,0.6); font-size: 10px; }
+.theme-macos .ctrl-btn:nth-child(3) { background: #ff5f56; order: 1; } /* Close */
+.theme-macos .ctrl-btn:nth-child(1) { background: #ffbd2e; order: 2; } /* Min */
+.theme-macos .ctrl-btn:nth-child(2) { background: #27c93f; order: 3; } /* Max */
+.theme-macos .taskbar-container { bottom: 15px; left: 50%; transform: translateX(-50%); width: auto; }
+.theme-macos .taskbar { border-radius: 20px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 8px 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+.theme-macos .burger { background: transparent; color: #fff; font-size: 26px; box-shadow: none; width: 40px; height: 40px; }
+
+/* --- MS-DOS (Terminal Mode) --- */
+.theme-msdos { background: #000 !important; }
+.theme-msdos .desktop { display: none; } /* Убираем обои */
+.theme-msdos * { font-family: 'Courier New', Courier, monospace !important; color: #0f0 !important; text-shadow: none !important; }
+.theme-msdos .window { background: #000 !important; border: 2px solid #0f0 !important; border-radius: 0 !important; box-shadow: none !important; }
+.theme-msdos .win-header { background: #000 !important; border-bottom: 1px dashed #0f0; }
+.theme-msdos .ctrl-btn { border: 1px solid #0f0; background: #000 !important; border-radius: 0; }
+.theme-msdos .desk-icon-img { display: none; } /* Скрываем картинки иконок */
+.theme-msdos .desktop-icons { padding-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.theme-msdos .desk-icon { width: auto; padding: 5px; cursor: pointer; flex-direction: row; }
+.theme-msdos .desk-icon-text::before { content: "C:\\> RUN "; }
+
+/* Панель задач (Пуск) теперь видна и стилизована под DOS */
+.theme-msdos .taskbar-container { 
+    display: flex; 
+    bottom: 0; 
+    left: 0; 
+    right: 0; 
+    background: #000; 
+    border-top: 1px solid #0f0; 
+}
+.theme-msdos .taskbar { 
+    background: #000; 
+    border: none; 
+    border-radius: 0; 
+    backdrop-filter: none; 
+    box-shadow: none; 
+}
+.theme-msdos .burger { 
+    background: #000; 
+    border: 1px solid #0f0; 
+    color: #0f0; 
+    border-radius: 0; 
+    font-family: monospace; 
+    font-weight: bold; 
+}
+.theme-msdos .icon-btn { 
+    background: #000; 
+    border: 1px solid #0f0; 
+    color: #0f0; 
+    border-radius: 0; 
+}
+/* --- Ubuntu --- */
+.theme-ubuntu .taskbar-container { top: 0; left: 0; bottom: 0; height: 100vh; flex-direction: column; }
+.theme-ubuntu .taskbar { height: 100%; border-radius: 0; background: rgba(30, 30, 30, 0.9); flex-direction: column; justify-content: flex-start; align-items: center; border-right: 1px solid #000; padding: 10px 5px;}
+.theme-ubuntu .burger { border-radius: 50%; background: transparent; margin-bottom: 20px; }
+.theme-ubuntu .win-header { background: #333; color: #fff; }
+.theme-ubuntu .win-controls { position: absolute; left: 10px; gap: 5px;}
+.theme-ubuntu .ctrl-btn { border-radius: 50%; color: transparent; width: 16px; height: 16px; background: #555; }
+.theme-ubuntu .ctrl-btn:nth-child(3) { background: #e95420; } /* Close orange */
+
+/* --- ChromeOS --- */
+.theme-chromeos .taskbar-container { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.theme-chromeos .taskbar { border-radius: 50px; padding: 5px 20px; background: rgba(255,255,255,0.9); border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.theme-chromeos .burger { border-radius: 50%; background: rgba(0,0,0,0.05); color: #000; width: 40px; height: 40px; box-shadow: none; font-size: 18px;}
+.theme-chromeos .icon-btn { color: #000; background: transparent; }
+
+/* --- AmigaOS --- */
+.theme-amiga * { font-family: sans-serif; font-weight: bold; }
+.theme-amiga .window { border: 2px solid #000; border-radius: 0; background: #aaa; color: #000; }
+.theme-amiga .win-header { background: #0055aa; color: #fff; border-bottom: 2px solid #000; }
+.theme-amiga .ctrl-btn { border: 2px solid #000; background: #f39c12; color: #000; border-radius: 0; }
+.theme-amiga .taskbar { background: #aaa; border: 2px solid #000; border-radius: 0; }
+.theme-amiga .burger { border: 2px solid #000; background: #0055aa; border-radius: 0; }
