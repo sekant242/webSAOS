@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebOS Pro - Designer Edition</title>
+<style>
+  :root{
+    --accent:#2b8cff;
+    --danger:#ff4d4d;
+    --warning:#f1c40f;
+    --bg:#0f1720;
+    --panel: rgba(255,255,255,0.08);
+    --text:#e6eef8;
+  }
+  html,body{
+    height:100%; margin:0; overflow:hidden;
+    font-family:-apple-system, system-ui, sans-serif;
+    background:var(--bg); color:var(--text);
+    user-select:none; -webkit-tap-highlight-color: transparent;
+  }
+  
+  .desktop{
+    position:relative; width:100%; height:100vh;
+    background-size:cover; background-position:center;
+    background-repeat: no-repeat;
+    transition: background 0.3s ease;
+  }
+
+  /* Taskbar */
+  .taskbar{
+    position:fixed; left:50%; bottom:15px; transform: translateX(-50%);
+    height:60px; display:flex; align-items:center; gap:12px; padding:0 15px;
+    background: rgba(15, 23, 32, 0.85); backdrop-filter: blur(20px);
+    border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); z-index:9999;
+  }
+
+  .icon-btn {
+    width:44px; height:44px; border-radius:12px; background:var(--panel);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; cursor:pointer; transition: 0.2s;
+  }
+  .icon-btn:hover { background: var(--accent); transform: translateY(-4px); }
+
+  /* Window System */
+  .window{
+    position:absolute; background: #161f29; border-radius:14px;
+    border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+    display:none; flex-direction:column; min-width:300px; min-height:200px;
+    overflow: hidden; z-index: 500; touch-action: none;
+  }
+
+  .win-header {
+    height: 46px; background: rgba(255,255,255,0.04);
+    display: flex; align-items: center; justify-content: center;
+    cursor: move; border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: relative; touch-action: none;
+  }
+
+  .win-title { position: absolute; left: 15px; font-size: 11px; opacity: 0.4; pointer-events: none; }
+
+  .central-controls {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(0,0,0,0.3); padding: 5px 14px; border-radius: 25px;
+  }
+
+  .ctrl-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
+    color: white; transition: 0.2s;
+  }
+  .btn-min { background: var(--warning); color: #000; }
+  .btn-close { background: var(--danger); font-weight: bold; }
+  .btn-max { background: var(--accent); }
+
+  .win-content { padding:18px; flex:1; overflow:auto; position: relative; }
+
+  /* Settings UI */
+  .setting-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; }
+  .setting-group label { font-size: 12px; opacity: 0.7; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  
+  input[type="color"] { border:none; width:40px; height:40px; cursor:pointer; background:none; }
+  input[type="range"] { flex: 1; }
+  input[type="text"] { background: var(--panel); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px; border-radius: 6px; flex:1; }
+
+  .btn { padding: 10px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer; font-weight: bold; }
+  .btn-danger { background: var(--danger); }
+
+  .resizer { width: 24px; height: 24px; position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 10; }
+
+  .maximized { top: 0 !important; left: 0 !important; width: 100vw !important; height: calc(100vh - 85px) !important; border-radius: 0; }
+</style>
+</head>
+<body>
+
+<div id="desktop" class="desktop"></div>
+
+<div class="taskbar">
+  <div class="icon-btn" onclick="openWin('win-fm')">📁</div>
+  <div class="icon-btn" onclick="openWin('win-note')">📝</div>
+  <div class="icon-btn" onclick="openWin('win-settings')">⚙️</div>
+</div>
+
+<div id="win-settings" class="window" style="width:380px; height:500px;">
+  <div class="win-header">
+    <div class="win-title">Настройки</div>
+    <div class="central-controls">
+      <button class="ctrl-btn btn-min" onclick="hideWin('win-settings')">—</button>
+      <button class="ctrl-btn btn-close" onclick="closeWin('win-settings')">✕</button>
+      <button class="ctrl-btn btn-max" onclick="maximizeWin('win-settings')">▢</button>
+    </div>
+  </div>
+  <div class="win-content">
+    
+    <div class="setting-group">
+      <label>Тип фона:</label>
+      <select id="bgType" class="btn" style="background: var(--panel);" onchange="updateBgControls()">
+        <option value="color">Сплошной цвет</option>
+        <option value="gradient">Градиент</option>
+        <option value="image">Изображение (URL)</option>
+      </select>
+    </div>
+
+    <div id="colorControls">
+      <div class="setting-group">
+        <label>Основной цвет:</label>
+        <div class="row">
+          <input type="color" id="color1" value="#2b8cff" oninput="applyBackground()">
+          <input type="text" id="color1Text" value="#2b8cff" readonly>
+        </div>
+      </div>
+      
+      <div id="gradOnly" style="display:none;">
+        <div class="setting-group">
+          <label>Второй цвет:</label>
+          <div class="row">
+            <input type="color" id="color2" value="#0f1720" oninput="applyBackground()">
+            <input type="text" id="color2Text" value="#0f1720" readonly>
+          </div>
+        </div>
+        <div class="setting-group">
+          <label>Угол наклона: <span id="angleVal">135</span>°</label>
+          <input type="range" id="bgAngle" min="0" max="360" value="135" oninput="applyBackground()">
+        </div>
+      </div>
+    </div>
+
+    <div id="imageControls" style="display:none;">
+      <div class="setting-group">
+        <label>URL картинки:</label>
+        <div class="row">
+          <input type="text" id="bgUrl" placeholder="https://...">
+          <button class="btn" onclick="applyBackground()">OK</button>
+        </div>
+      </div>
+      <div class="setting-group">
+        <label>Или загрузить файл:</label>
+        <input type="file" id="bgFile" accept="image/*" class="btn" style="background: var(--panel);">
+      </div>
+    </div>
+
+    <hr style="opacity:0.1; margin:20px 0;">
+    <button class="btn btn-danger" style="width:100%" onclick="fullReset()">Полный сброс ОС</button>
+    <div class="resizer"></div>
+  </div>
+</div>
+
+<div id="win-fm" class="window" style="width:400px; height:300px;"><div class="win-header"><div class="win-title">Files</div><div class="central-controls"><button class="ctrl-btn btn-min" onclick="hideWin('win-fm')">—</button><button class="ctrl-btn btn-close" onclick="closeWin('win-fm')">✕</button><button class="ctrl-btn btn-max" onclick="maximizeWin('win-fm')">▢</button></div></div><div class="win-content"><button class="btn" onclick="document.getElementById('installInput').click()">📦 Install .js</button><input type="file" id="installInput" hidden accept=".js" onchange="handleInstall(this)"><div id="fm-list"></div><div class="resizer"></div></div></div>
+
+<div id="win-note" class="window" style="width:350px; height:300px;"><div class="win-header"><div class="win-title">Notes</div><div class="central-controls"><button class="ctrl-btn btn-min" onclick="hideWin('win-note')">—</button><button class="ctrl-btn btn-close" onclick="closeWin('win-note')">✕</button><button class="ctrl-btn btn-max" onclick="maximizeWin('win-note')">▢</button></div></div><div class="win-content"><textarea placeholder="Напиши что-нибудь..."></textarea><div class="resizer"></div></div></div>
+
+<script>
+  let highestZ = 1000;
+  const desktop = document.getElementById('desktop');
+
+  // --- Инициализация ---
+  window.onload = () => {
+    const savedBg = localStorage.getItem('os_bg_style');
+    if(savedBg) desktop.style.background = savedBg;
+    updateBgControls();
+  };
+
+  // --- Фоновые функции ---
+  function updateBgControls() {
+    const type = document.getElementById('bgType').value;
+    document.getElementById('colorControls').style.display = (type === 'image') ? 'none' : 'block';
+    document.getElementById('gradOnly').style.display = (type === 'gradient') ? 'block' : 'none';
+    document.getElementById('imageControls').style.display = (type === 'image') ? 'block' : 'none';
+  }
+
+  function applyBackground() {
+    const type = document.getElementById('bgType').value;
+    let style = "";
+
+    if(type === 'color') {
+      style = document.getElementById('color1').value;
+      document.getElementById('color1Text').value = style;
+    } else if (type === 'gradient') {
+      const c1 = document.getElementById('color1').value;
+      const c2 = document.getElementById('color2').value;
+      const angle = document.getElementById('bgAngle').value;
+      document.getElementById('color1Text').value = c1;
+      document.getElementById('color2Text').value = c2;
+      document.getElementById('angleVal').innerText = angle;
+      style = `linear-gradient(${angle}deg, ${c1}, ${c2})`;
+    } else {
+      const url = document.getElementById('bgUrl').value;
+      if(url) style = `url('${url}') center/cover no-repeat`;
+    }
+
+    if(style) {
+      desktop.style.background = style;
+      localStorage.setItem('os_bg_style', style);
+    }
+  }
+
+  // Обработка загрузки файла
+  document.getElementById('bgFile').onchange = function(e) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const res = `url('${ev.target.result}') center/cover no-repeat`;
+      desktop.style.background = res;
+      localStorage.setItem('os_bg_style', res);
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  };
+
+  // --- Управление окнами (Touch + Mouse) ---
+  function openWin(id) {
+    const win = document.getElementById(id);
+    win.style.display = 'flex';
+    if (!win.style.left) {
+      win.style.left = (window.innerWidth - win.offsetWidth)/2 + "px";
+      win.style.top = "100px";
+    }
+    focusWin(win);
+  }
+  function closeWin(id) { document.getElementById(id).style.display = 'none'; }
+  function hideWin(id) { document.getElementById(id).style.display = 'none'; }
+  function maximizeWin(id) { document.getElementById(id).classList.toggle('maximized'); }
+  function focusWin(win) { win.style.zIndex = ++highestZ; }
+
+  document.querySelectorAll('.window').forEach(win => {
+    const header = win.querySelector('.win-header');
+    const resizer = win.querySelector('.resizer');
+
+    const startEvent = (e) => {
+      if(win.classList.contains('maximized') || e.target.classList.contains('ctrl-btn')) return;
+      const t = e.touches ? e.touches[0] : e;
+      let sX = t.clientX - win.offsetLeft;
+      let sY = t.clientY - win.offsetTop;
+      const move = (me) => {
+        const mt = me.touches ? me.touches[0] : me;
+        win.style.left = (mt.clientX - sX) + 'px';
+        win.style.top = (mt.clientY - sY) + 'px';
+      };
+      const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('touchmove', move); };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('touchmove', move, {passive:false});
+      document.addEventListener('mouseup', stop);
+      document.addEventListener('touchend', stop);
+    };
+
+    const resizeEvent = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const t = e.touches ? e.touches[0] : e;
+      let sW = win.offsetWidth, sH = win.offsetHeight, sX = t.clientX, sY = t.clientY;
+      const move = (me) => {
+        const mt = me.touches ? me.touches[0] : me;
+        win.style.width = (sW + (mt.clientX - sX)) + 'px';
+        win.style.height = (sH + (mt.clientY - sY)) + 'px';
+      };
+      const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('touchmove', move); };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('touchmove', move, {passive:false});
+      document.addEventListener('mouseup', stop);
+      document.addEventListener('touchend', stop);
+    };
+
+    header.addEventListener('mousedown', startEvent);
+    header.addEventListener('touchstart', startEvent, {passive:false});
+    resizer.addEventListener('mousedown', resizeEvent);
+    resizer.addEventListener('touchstart', resizeEvent, {passive:false});
+    win.addEventListener('mousedown', () => focusWin(win));
+  });
+
+  function handleInstall(input) {
+    const file = input.files[0];
+    if(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const s = document.createElement('script');
+        s.textContent = e.target.result;
+        document.body.appendChild(s);
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  function fullReset() { if(confirm('Сбросить всё?')) { localStorage.clear(); location.reload(); } }
+</script>
+</body>
+</html>
