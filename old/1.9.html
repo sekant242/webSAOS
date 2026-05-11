@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS</title>
+
+<style>
+  :root {
+    /* Базовые цвета */
+    --accent: #2b8cff;
+    --danger: #ff4d4d;
+    --text: #e6eef8;
+    --win-bg-rgb: 22, 31, 41;
+    
+    /* Эффекты */
+    --win-opacity: 0.85;
+    --glass-blur: 15px;
+    --blur: 0px;
+    --shadow-op: 0.5;
+
+    /* Скругления (ЛВ, ПВ, ПН, ЛН) */
+    --win-radius: 16px 16px 16px 16px;
+    --btn-radius: 10px 10px 10px 10px;
+    --menu-radius: 16px 16px 16px 16px;
+
+    /* Размеры */
+    --icon-size: 54px;
+    --text-size: 11px;
+  }
+
+  * { box-sizing: border-box; font-family: system-ui, sans-serif; transition: background 0.3s, color 0.3s, border-radius 0.1s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: #000; color: var(--text); user-select: none; }
+  
+  /* Экран входа */
+  #login-screen { position: fixed; inset: 0; background: rgba(10, 15, 20, 0.95); backdrop-filter: blur(20px); z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .login-box { background: rgba(255,255,255,0.05); padding: 30px; border-radius: var(--win-radius); text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,var(--shadow-op)); width: 350px; max-width: 90%; }
+  .users-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; max-height: 200px; overflow-y: auto; }
+  .user-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--btn-radius); padding: 10px; width: 80px; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
+  .user-card:hover { transform: translateY(-5px); border-color: var(--accent); background: rgba(43, 140, 255, 0.2); }
+  .user-icon { font-size: 30px; margin-bottom: 5px; }
+  .user-name { font-size: var(--text-size); font-weight: bold; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  
+  /* Контекстное меню */
+  #context-menu { position: fixed; background: rgba(var(--win-bg-rgb), 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(128,128,128,0.2); border-radius: var(--menu-radius); padding: 5px; display: none; flex-direction: column; z-index: 99999; box-shadow: 0 5px 15px rgba(0,0,0,var(--shadow-op)); min-width: 180px; }
+  .cm-item { padding: 10px 15px; font-size: calc(var(--text-size) + 2px); cursor: pointer; border-radius: var(--btn-radius); display: flex; gap: 10px; align-items: center; }
+  .cm-item:hover { background: var(--accent); color: #fff; }
+
+  /* Рабочий стол и иконки */
+  .desktop { position: fixed; inset: 0; background-size: cover; background-position: center; filter: blur(var(--blur)); z-index: 1; }
+  .desktop-icons { position: fixed; top: 0; left: 0; width: 100%; height: calc(100% - 120px); padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px; z-index: 10; overflow-y: auto; }
+  .desk-icon { width: calc(var(--icon-size) + 10px); display: flex; flex-direction: column; align-items: center; cursor: pointer; position: relative; }
+  .desk-icon-img { width: var(--icon-size); height: var(--icon-size); background: rgba(128,128,128,0.3); backdrop-filter: blur(5px); border-radius: var(--btn-radius); display: flex; align-items: center; justify-content: center; font-size: calc(var(--icon-size) / 2); margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,var(--shadow-op)); }
+  .desk-icon-text { font-size: var(--text-size); text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.8); color: #fff; word-break: break-word; font-weight: 500; }
+  .desk-icon.selected .desk-icon-img { border: 2px solid var(--accent); box-shadow: 0 0 15px var(--accent); background: rgba(43, 140, 255, 0.4); transform: scale(1.05); }
+  .folder-plus { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; cursor: pointer; z-index: 5; box-shadow: 0 2px 5px rgba(0,0,0,var(--shadow-op)); }
+  
+  /* Уведомления */
+  #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  .toast { background: rgba(var(--win-bg-rgb), 0.9); backdrop-filter: blur(10px); color: var(--text); padding: 10px 20px; border-radius: var(--menu-radius); font-size: calc(var(--text-size) + 2px); box-shadow: 0 4px 15px rgba(0,0,0,var(--shadow-op)); border: 1px solid rgba(128,128,128,0.2); opacity: 0; animation: toastIn 0.3s forwards; }
+  .toast.error { border-color: var(--danger); }
+  .toast.success { border-color: #2ecc71; }
+  .toast.hide { animation: toastOut 0.3s forwards; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+
+  /* Виджет памяти */
+  #storage-widget { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; z-index: 9998; background: rgba(var(--win-bg-rgb), 0.5); border-radius: 50%; backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(128,128,128,0.2); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,var(--shadow-op)); }
+  .circular-chart { display: block; margin: 0 auto; max-width: 80%; max-height: 250px; }
+  .circle-bg { fill: none; stroke: rgba(128,128,128,0.2); stroke-width: 3.8; }
+  .circle { fill: none; stroke-width: 3.8; stroke-linecap: round; transition: stroke-dasharray 0.5s ease; }
+  .storage-text { position: absolute; font-size: 10px; font-weight: bold; }
+
+  /* Центр управления (Улучшенный) */
+  #control-center { position: fixed; right: 20px; bottom: 90px; width: 320px; max-height: 75vh; overflow-y: auto; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); border-radius: var(--menu-radius); border: 1px solid rgba(128,128,128,0.2); padding: 15px; display: none; flex-direction: column; gap: 15px; z-index: 99999; box-shadow: 0 10px 40px rgba(0,0,0,var(--shadow-op)); }
+  
+  /* Скроллбар для CC */
+  #control-center::-webkit-scrollbar { width: 6px; }
+  #control-center::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.5); border-radius: 3px; }
+
+  .cc-header { font-weight:bold; font-size: 16px; border-bottom:1px solid rgba(128,128,128,0.2); padding-bottom:10px; margin-bottom:5px; position: sticky; top: -15px; background: rgba(var(--win-bg-rgb), 0.9); z-index: 2; padding-top: 15px; margin-top: -15px;}
+  .cc-section { background: rgba(128,128,128,0.05); padding: 10px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(128,128,128,0.1); }
+  .cc-section-title { font-size: 12px; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+  .cc-slider-group { display: flex; flex-direction: column; gap: 5px; }
+  .cc-slider-group label { font-size: 11px; opacity: 0.8; display: flex; justify-content: space-between; align-items: center; }
+  .cc-slider-group input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .cc-slider-group input[type="color"] { width: 30px; height: 30px; border: none; border-radius: 5px; cursor: pointer; background: none; padding: 0;}
+  
+  /* Сетка углов */
+  .radius-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 8px; }
+  .radius-cell { display: flex; flex-direction: column; gap: 2px; }
+  .radius-cell span { font-size: 9px; opacity: 0.6; text-align: center; }
+  .radius-cell input { width: 100%; }
+
+  /* Панель задач */
+  .taskbar-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .taskbar { display: none; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); padding: 12px; border-radius: var(--menu-radius); border: 1px solid rgba(128,128,128,0.2); flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,var(--shadow-op)); }
+  .taskbar.active { display: flex; }
+  .burger { width: 55px; height: 55px; background: var(--accent); border-radius: var(--btn-radius); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,var(--shadow-op)); z-index: 10000; color: #fff;}
+  .icon-btn { width: 48px; height: 48px; border-radius: var(--btn-radius); background: rgba(128,128,128,0.15); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; color: var(--text); }
+
+  /* Окна и элементы */
+  .window { position: absolute; background: rgba(var(--win-bg-rgb), var(--win-opacity)); backdrop-filter: blur(var(--glass-blur)); border-radius: var(--win-radius); border: 1px solid rgba(128,128,128,0.2); display: none; flex-direction: column; overflow: hidden; z-index: 500; min-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,var(--shadow-op)); }
+  .win-header { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: rgba(128,128,128,0.1); cursor: move; border-bottom: 1px solid rgba(128,128,128,0.1); flex-shrink: 0; }
+  .ctrl-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(128,128,128,0.2); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-left: 5px; }
+  .win-content { flex: 1; overflow: auto; padding: 15px; display: flex; flex-direction: column; }
+  .list-item { padding: 10px; background: rgba(128,128,128,0.05); border-radius: var(--btn-radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  textarea, input[type="text"], input[type="password"], select { width: 100%; padding: 12px; background: rgba(128,128,128,0.1); border: 1px solid rgba(128,128,128,0.3); color: var(--text); border-radius: var(--btn-radius); margin-bottom: 10px; font-size: 14px; outline: none; }
+  .btn { padding: 12px; border-radius: var(--btn-radius); border: none; background: var(--accent); color: white; width: 100%; font-weight: bold; cursor: pointer; margin: 5px 0; }
+  .folder-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px; }
+  
+  /* Переключатель (Toggle) */
+  .toggle-switch { position: relative; width: 40px; height: 20px; appearance: none; background: rgba(128,128,128,0.3); outline: none; border-radius: 20px; transition: 0.3s; cursor: pointer; }
+  .toggle-switch:checked { background: var(--accent); }
+  .toggle-switch::before { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; top: 2px; left: 2px; background: #fff; transition: 0.3s; }
+  .toggle-switch:checked::before { transform: translateX(20px); }
+
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h2>WebSAOS 1.9</h2>
+    <p style="font-size:12px; opacity:0.7; margin-top:-10px;">Выберите профиль</p>
+    <div id="users-grid" class="users-grid"></div>
+    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+    <p style="font-size:12px; font-weight:bold; cursor:pointer; color:var(--accent)" onclick="toggleNewUserForm()">+ Создать пользователя</p>
+    <div id="new-user-form" style="display:none; text-align:left;">
+      <input type="text" id="new-u-name" placeholder="Имя профиля">
+      <input type="text" id="new-u-icon" placeholder="Иконка (напр. 🐱)" value="👤">
+      <input type="password" id="new-u-pass" placeholder="Пароль">
+      <button class="btn" onclick="createNewUser()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<div id="context-menu">
+  <div class="cm-item" onclick="createNewFolder()">📁 Создать папку</div>
+  <div class="cm-item" onclick="createUrlShortcut()">🌐 Создать ярлык (URL)</div>
+  <div class="cm-item" onclick="openWin('win-settings')">⚙️ Установка обоев</div>
+  <div class="cm-item" onclick="toggleControlCenter()">🎛 Кастомизация интерфейса</div>
+</div>
+
+<div id="desktop" class="desktop"></div>
+<div id="desktop-icons" class="desktop-icons"></div>
+
+<div id="storage-widget" onclick="notify('Заполненность LocalStorage', 'info')">
+  <svg viewBox="0 0 36 36" class="circular-chart">
+    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+    <path class="circle" id="storage-circle" stroke="#2ecc71" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+  </svg>
+  <div class="storage-text" id="storage-text">0%</div>
+</div>
+
+<div id="control-center">
+  <div class="cc-header">Пульт управления ОС</div>
+  
+  <div class="cc-section">
+    <div class="cc-section-title">✨ Общий стиль</div>
+    
+    <div class="cc-slider-group">
+      <label>Светлая тема <input type="checkbox" class="toggle-switch" id="cc-theme-mode" onchange="toggleLightMode(this.checked)"></label>
+    </div>
+    
+    <div class="cc-slider-group">
+      <label>Акцентный цвет: <input type="color" id="cc-accent" oninput="changeCssVar('--accent', this.value)"></label>
+    </div>
+    
+    <div class="cc-slider-group">
+      <label>Глубина теней <span id="lbl-shd">0.5</span></label>
+      <input type="range" min="0" max="1" step="0.1" value="0.5" id="cc-shadow" oninput="changeCssVar('--shadow-op', this.value, 'lbl-shd')">
+    </div>
+
+    <div class="cc-slider-group">
+      <label>Размер иконок <span id="lbl-ics">54px</span></label>
+      <input type="range" min="30" max="80" step="1" value="54" id="cc-icon-size" oninput="changeCssVar('--icon-size', this.value + 'px', 'lbl-ics')">
+    </div>
+
+    <div class="cc-slider-group">
+      <label>Размер шрифта <span id="lbl-txt">11px</span></label>
+      <input type="range" min="9" max="18" step="1" value="11" id="cc-text-size" oninput="changeCssVar('--text-size', this.value + 'px', 'lbl-txt')">
+    </div>
+  </div>
+
+  <div class="cc-section">
+    <div class="cc-section-title">🌫 Стекло и Фон</div>
+    <div class="cc-slider-group">
+      <label>Прозрачность <span id="lbl-op">0.85</span></label>
+      <input type="range" min="0.1" max="1" step="0.05" value="0.85" id="cc-opacity" oninput="changeCssVar('--win-opacity', this.value, 'lbl-op')">
+    </div>
+    <div class="cc-slider-group">
+      <label>Размытие стекла <span id="lbl-gbl">15px</span></label>
+      <input type="range" min="0" max="40" step="1" value="15" id="cc-glass" oninput="changeCssVar('--glass-blur', this.value + 'px', 'lbl-gbl')">
+    </div>
+    <div class="cc-slider-group">
+      <label>Размытие обоев <span id="lbl-bl">0px</span></label>
+      <input type="range" min="0" max="30" step="1" value="0" id="cc-bg-blur" oninput="changeCssVar('--blur', this.value + 'px', 'lbl-bl')">
+    </div>
+  </div>
+
+  <div class="cc-section">
+    <div class="cc-section-title">🔲 Углы окон</div>
+    <div class="radius-grid">
+      <div class="radius-cell"><span>Лев-Верх</span><input type="range" id="win-tl" min="0" max="50" oninput="updateShape('win')"></div>
+      <div class="radius-cell"><span>Прав-Верх</span><input type="range" id="win-tr" min="0" max="50" oninput="updateShape('win')"></div>
+      <div class="radius-cell"><span>Лев-Низ</span><input type="range" id="win-bl" min="0" max="50" oninput="updateShape('win')"></div>
+      <div class="radius-cell"><span>Прав-Низ</span><input type="range" id="win-br" min="0" max="50" oninput="updateShape('win')"></div>
+    </div>
+  </div>
+
+  <div class="cc-section">
+    <div class="cc-section-title">📱 Углы иконок/кнопок</div>
+    <div class="radius-grid">
+      <div class="radius-cell"><span>Лев-Верх</span><input type="range" id="btn-tl" min="0" max="50" oninput="updateShape('btn')"></div>
+      <div class="radius-cell"><span>Прав-Верх</span><input type="range" id="btn-tr" min="0" max="50" oninput="updateShape('btn')"></div>
+      <div class="radius-cell"><span>Лев-Низ</span><input type="range" id="btn-bl" min="0" max="50" oninput="updateShape('btn')"></div>
+      <div class="radius-cell"><span>Прав-Низ</span><input type="range" id="btn-br" min="0" max="50" oninput="updateShape('btn')"></div>
+    </div>
+  </div>
+
+  <div class="cc-section">
+    <div class="cc-section-title">📑 Углы меню и уведомлений</div>
+    <div class="radius-grid">
+      <div class="radius-cell"><span>Лев-Верх</span><input type="range" id="menu-tl" min="0" max="50" oninput="updateShape('menu')"></div>
+      <div class="radius-cell"><span>Прав-Верх</span><input type="range" id="menu-tr" min="0" max="50" oninput="updateShape('menu')"></div>
+      <div class="radius-cell"><span>Лев-Низ</span><input type="range" id="menu-bl" min="0" max="50" oninput="updateShape('menu')"></div>
+      <div class="radius-cell"><span>Прав-Низ</span><input type="range" id="menu-br" min="0" max="50" oninput="updateShape('menu')"></div>
+    </div>
+  </div>
+
+</div>
+
+<input type="file" id="file-upload" accept="image/*" style="display:none">
+<input type="file" id="app-upload" accept=".js,.html,text/html,text/javascript" style="display:none">
+
+<div class="taskbar-container" id="taskbar-container">
+  <div class="taskbar" id="main-menu">
+    <div class="icon-btn" onclick="openWin('win-app-manager')" title="Менеджер">📦</div>
+    <div class="icon-btn" onclick="toggleControlCenter()" title="Кастомизация">🎨</div>
+    <div class="icon-btn" onclick="openWin('win-settings')" title="Обои">🖼</div>
+    <div class="icon-btn" onclick="logout()" title="Выход" style="background: rgba(255, 77, 77, 0.3);">🚪</div>
+  </div>
+  <div class="burger" id="burger-btn">📱</div> 
+</div>
+
+<div id="win-desk-folder" class="window" style="width:300px; height:350px; top:20%; left:20%;">
+  <div class="win-header">
+    <span id="desk-folder-title">Папка</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-desk-folder">✕</button>
+  </div>
+  <div class="win-content" style="padding:0; background:rgba(0,0,0,0.2);">
+    <div id="desk-folder-content" class="folder-grid"></div>
+  </div>
+</div>
+
+<div id="win-app-manager" class="window" style="width:85%; height:75%; top:10%; left:7%;">
+  <div class="win-header">
+    <span>Менеджер Приложений</span>
+    <button class="ctrl-btn" style="background:var(--danger)" data-close="win-app-manager">✕</button>
+  </div>
+  <div class="win-content">
+    <button class="btn" onclick="document.getElementById('app-upload').click()">📥 Установить приложение</button>
+    <div id="app-manager-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; margin-top:10px;"></div>
+  </div>
+</div>
+
+<div id="win-settings" class="window" style="width:320px; height:200px; top:20%; left:20%;">
+    <div class="win-header"><span>Обои и Сброс</span><button class="ctrl-btn" style="background:var(--danger)" data-close="win-settings">✕</button></div>
+    <div class="win-content">
+      <button class="btn" onclick="document.getElementById('file-upload').click()">🖼 Установить обои (Файл)</button>
+      <button class="btn" style="background:var(--danger); margin-top:20px;" onclick="fullReset()">Сбросить ВСЮ систему</button>
+    </div>
+</div>
+
+<script>
+(function() {
+  let highestZ = 1000;
+  let usersData = {}; 
+  let currentUser = '';
+  let state = {};
+  let currentOpenDeskFolder = null; 
+  let selectedIcons = []; 
+
+  // --- УВЕДОМЛЕНИЯ ---
+  window.notify = (msg, type = 'info') => {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerText = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+          toast.classList.add('hide');
+          setTimeout(() => toast.remove(), 300);
+      }, 3000);
+  };
+
+  // --- ПАМЯТЬ ---
+  window.updateStorageChart = () => {
+      let used = 0;
+      for (let key in localStorage) { if (localStorage.hasOwnProperty(key)) { used += localStorage[key].length * 2; } }
+      const total = 5 * 1024 * 1024; // ~5MB
+      const percent = Math.min(Math.round((used / total) * 100), 100);
+      
+      const circle = document.getElementById('storage-circle');
+      circle.setAttribute('stroke-dasharray', `${percent}, 100`);
+      document.getElementById('storage-text').innerText = `${percent}%`;
+      
+      if(percent > 85) circle.setAttribute('stroke', 'var(--danger)');
+      else if(percent > 60) circle.setAttribute('stroke', '#f39c12');
+      else circle.setAttribute('stroke', '#2ecc71');
+  };
+
+  // --- ЗАГРУЗКА И ВХОД ---
+  window.onload = () => {
+    usersData = JSON.parse(localStorage.getItem('websaos_users_data')) || { 'Admin': { icon: '👑', pass: '' } };
+    if(!localStorage.getItem('websaos_users_data')) localStorage.setItem('websaos_users_data', JSON.stringify(usersData));
+    renderUsersGrid();
+    updateStorageChart();
+  };
+
+  function renderUsersGrid() {
+    const grid = document.getElementById('users-grid');
+    grid.innerHTML = '';
+    for(let username in usersData) {
+        let card = document.createElement('div');
+        card.className = 'user-card';
+        card.innerHTML = `<div class="user-icon">${usersData[username].icon}</div><div class="user-name">${username}</div>`;
+        card.onclick = () => attemptLogin(username, usersData[username].pass);
+        grid.appendChild(card);
+    }
+  }
+
+  window.attemptLogin = (username, hasPass) => {
+      if (hasPass) {
+          const pass = prompt(`Введите пароль для ${username}:`);
+          if (pass !== hasPass) return notify("Неверный пароль!", "error");
+      }
+      currentUser = username;
+      document.getElementById('login-screen').style.display = 'none';
+      loadUserState();
+  }
+
+  window.toggleNewUserForm = () => {
+      const form = document.getElementById('new-user-form');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  window.createNewUser = () => {
+      const name = document.getElementById('new-u-name').value.trim();
+      const icon = document.getElementById('new-u-icon').value || '👤';
+      const pass = document.getElementById('new-u-pass').value;
+      if (!name) return notify('Введите имя!', "error");
+      if (usersData[name]) return notify('Пользователь уже существует!', "error");
+
+      usersData[name] = { icon, pass };
+      localStorage.setItem('websaos_users_data', JSON.stringify(usersData));
+      document.getElementById('new-u-name').value = '';
+      document.getElementById('new-u-pass').value = '';
+      toggleNewUserForm();
+      renderUsersGrid();
+      notify('Пользователь создан', 'success');
+  }
+
+  window.logout = () => {
+      document.getElementById('main-menu').classList.remove('active');
+      document.getElementById('control-center').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+      renderUsersGrid();
+  }
+
+  function loadUserState() {
+    state = JSON.parse(localStorage.getItem(`websaos_config_${currentUser}`)) || { bgValue: '', theme: {} };
+    applySettings(); 
+    renderDesktop(); 
+    
+    document.querySelectorAll('.window').forEach(win => { initDrag(win); initResize(win); });
+    document.getElementById('burger-btn').onclick = (e) => { 
+        e.stopPropagation();
+        document.getElementById('main-menu').classList.toggle('active'); 
+        document.getElementById('control-center').style.display = 'none';
+    };
+    notify(`Добро пожаловать, ${currentUser}!`, "success"); 
+  }
+
+  window.saveProfile = () => {
+      localStorage.setItem(`websaos_config_${currentUser}`, JSON.stringify(state));
+      updateStorageChart();
+  }
+
+  // --- КОНТЕКСТНОЕ МЕНЮ И СЕНСОР ---
+  const contextMenu = document.getElementById('context-menu');
+  let longPressTimer;
+
+  document.addEventListener('click', (e) => { 
+      contextMenu.style.display = 'none'; 
+      if(!e.target.closest('#taskbar-container') && !e.target.closest('#control-center')) {
+          document.getElementById('main-menu').classList.remove('active');
+          document.getElementById('control-center').style.display = 'none';
+      }
+  });
+
+  const showContext = (e) => {
+      e.preventDefault();
+      contextMenu.style.display = 'flex';
+      contextMenu.style.left = (e.clientX || e.touches[0].clientX) + 'px';
+      contextMenu.style.top = (e.clientY || e.touches[0].clientY) + 'px';
+  };
+
+  document.addEventListener('contextmenu', (e) => {
+      if (e.target.id === 'desktop' || e.target.id === 'desktop-icons') showContext(e);
+  });
+  
+  document.addEventListener('touchstart', (e) => {
+      if (e.target.id === 'desktop' || e.target.id === 'desktop-icons') {
+          longPressTimer = setTimeout(() => showContext(e), 600);
+      }
+  });
+  document.addEventListener('touchend', () => clearTimeout(longPressTimer));
+  document.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+
+  // --- ЯРЛЫКИ И ПАПКИ ---
+  window.createNewFolder = () => {
+      const name = prompt("Имя новой папки:");
+      if (!name) return;
+      const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+      folders['df_' + Date.now()] = { name: name };
+      localStorage.setItem(`desk_folders_${currentUser}`, JSON.stringify(folders));
+      notify(`Папка "${name}" создана`);
+      renderDesktop();
+  }
+
+  window.createUrlShortcut = () => {
+      const name = prompt("Имя ярлыка:");
+      if(!name) return;
+      const url = prompt("Введите URL (начиная с https://):", "https://");
+      if(!url) return;
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+      apps['url_'+Date.now()] = { name: name, icon: '🌐', type: 'url', url: url, deskFolderId: null };
+      localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+      notify("Ярлык создан!", "success");
+      renderDesktop();
+      updateStorageChart();
+  }
+
+  // --- ЛОГИКА КАСТОМИЗАЦИИ (CONTROL CENTER) ---
+  window.toggleControlCenter = () => {
+      const cc = document.getElementById('control-center');
+      cc.style.display = cc.style.display === 'flex' ? 'none' : 'flex';
+      document.getElementById('main-menu').classList.remove('active');
+  }
+
+  window.changeCssVar = (variable, value, labelId) => {
+      document.documentElement.style.setProperty(variable, value);
+      if(labelId) {
+          document.getElementById(labelId).innerText = value.replace('px', '');
+          if(labelId === 'lbl-ics' || labelId === 'lbl-txt') document.getElementById(labelId).innerText += 'px';
+      }
+      if(!state.theme) state.theme = {};
+      state.theme[variable] = value;
+      saveProfile();
+  }
+
+  window.toggleLightMode = (isLight) => {
+      if(isLight) {
+          changeCssVar('--win-bg-rgb', '240, 245, 250');
+          changeCssVar('--text', '#1a1a1a');
+      } else {
+          changeCssVar('--win-bg-rgb', '22, 31, 41');
+          changeCssVar('--text', '#e6eef8');
+      }
+      state.theme['isLightMode'] = isLight;
+      saveProfile();
+  }
+
+  window.updateShape = (type) => {
+      const tl = document.getElementById(`${type}-tl`).value || 0;
+      const tr = document.getElementById(`${type}-tr`).value || 0;
+      const br = document.getElementById(`${type}-br`).value || 0;
+      const bl = document.getElementById(`${type}-bl`).value || 0;
+      const radiusString = `${tl}px ${tr}px ${br}px ${bl}px`;
+      changeCssVar(`--${type}-radius`, radiusString);
+  };
+
+  function parseRadiusToSliders(type, radiusStr) {
+      if(!radiusStr) return;
+      let parts = radiusStr.replace(/px/g, '').split(' ');
+      if(parts.length === 4) {
+          if(document.getElementById(`${type}-tl`)) {
+              document.getElementById(`${type}-tl`).value = parts[0];
+              document.getElementById(`${type}-tr`).value = parts[1];
+              document.getElementById(`${type}-br`).value = parts[2];
+              document.getElementById(`${type}-bl`).value = parts[3];
+          }
+      }
+  }
+
+  function applySettings() {
+    if(state.bgValue) document.getElementById('desktop').style.backgroundImage = `url(${state.bgValue})`;
+    
+    // Применение сохраненной темы
+    if(state.theme) {
+        for(let key in state.theme) {
+            if(key === 'isLightMode') {
+                document.getElementById('cc-theme-mode').checked = state.theme[key];
+                continue;
+            }
+            document.documentElement.style.setProperty(key, state.theme[key]);
+            
+            // Синхронизация одиночных ползунков
+            if(key === '--win-opacity') { document.getElementById('cc-opacity').value = state.theme[key]; document.getElementById('lbl-op').innerText = state.theme[key]; }
+            if(key === '--glass-blur') { document.getElementById('cc-glass').value = parseInt(state.theme[key]); document.getElementById('lbl-gbl').innerText = state.theme[key]; }
+            if(key === '--blur') { document.getElementById('cc-bg-blur').value = parseInt(state.theme[key]); document.getElementById('lbl-bl').innerText = state.theme[key]; }
+            if(key === '--shadow-op') { document.getElementById('cc-shadow').value = state.theme[key]; document.getElementById('lbl-shd').innerText = state.theme[key]; }
+            if(key === '--icon-size') { document.getElementById('cc-icon-size').value = parseInt(state.theme[key]); document.getElementById('lbl-ics').innerText = state.theme[key]; }
+            if(key === '--text-size') { document.getElementById('cc-text-size').value = parseInt(state.theme[key]); document.getElementById('lbl-txt').innerText = state.theme[key]; }
+            if(key === '--accent') document.getElementById('cc-accent').value = state.theme[key];
+        }
+        
+        // Синхронизация ползунков радиусов
+        parseRadiusToSliders('win', state.theme['--win-radius'] || '16px 16px 16px 16px');
+        parseRadiusToSliders('btn', state.theme['--btn-radius'] || '10px 10px 10px 10px');
+        parseRadiusToSliders('menu', state.theme['--menu-radius'] || '16px 16px 16px 16px');
+    } else {
+        // Установка стандартных значений радиусов в UI
+        parseRadiusToSliders('win', '16 16 16 16');
+        parseRadiusToSliders('btn', '10 10 10 10');
+        parseRadiusToSliders('menu', '16 16 16 16');
+    }
+  }
+
+  // --- РАБОЧИЙ СТОЛ ---
+  window.renderDesktop = () => {
+    const deskCont = document.getElementById('desktop-icons');
+    const folderCont = document.getElementById('desk-folder-content');
+    deskCont.innerHTML = ''; 
+    if (folderCont) folderCont.innerHTML = ''; 
+    
+    const folders = JSON.parse(localStorage.getItem(`desk_folders_${currentUser}`)) || {};
+    for(let fId in folders) {
+        const folderIcon = document.createElement('div');
+        folderIcon.className = 'desk-icon';
+        folderIcon.innerHTML = `<div class="folder-plus" onclick="moveSelectedToFolder('${fId}', event)" title="Поместить сюда">＋</div><div class="desk-icon-img">📁</div><div class="desk-icon-text">${folders[fId].name}</div>`;
+        folderIcon.onclick = (e) => { if(e.target.className !== 'folder-plus') openDeskFolder(fId, folders[fId].name); }
+        deskCont.appendChild(folderIcon);
+    }
+
+    const myApps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+    for(let id in myApps) {
+      const app = myApps[id];
+      const appIcon = document.createElement('div');
+      appIcon.className = 'desk-icon';
+      if(selectedIcons.includes(id)) appIcon.classList.add('selected');
+      appIcon.innerHTML = `<div class="desk-icon-img">${app.icon}</div><div class="desk-icon-text">${app.name}</div>`;
+      
+      let pressTimer;
+      const startPress = () => {
+          pressTimer = setTimeout(() => {
+              appIcon.classList.toggle('selected');
+              if(appIcon.classList.contains('selected')) { if(!selectedIcons.includes(id)) selectedIcons.push(id); } 
+              else { selectedIcons = selectedIcons.filter(x => x !== id); }
+          }, 420); 
+      };
+      const cancelPress = () => clearTimeout(pressTimer);
+      
+      appIcon.addEventListener('touchstart', startPress, {passive: true});
+      ['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(ev => appIcon.addEventListener(ev, cancelPress));
+      appIcon.addEventListener('mousedown', startPress);
+      
+      appIcon.onclick = () => {
+          if (app.type === 'url') window.open(app.url, '_blank');
+          else runApp(id, app);
+      };
+      
+      if (app.deskFolderId) {
+          if (currentOpenDeskFolder === app.deskFolderId && folderCont) folderCont.appendChild(appIcon);
+      } else { deskCont.appendChild(appIcon); }
+    }
+    updateAppManagerList(myApps);
+  };
+
+  window.moveSelectedToFolder = (targetFolderId, e) => {
+      e.stopPropagation();
+      if(selectedIcons.length === 0) return notify('Сначала выделите иконки долгим нажатием!', 'error');
+      const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`));
+      selectedIcons.forEach(id => { if(apps[id]) apps[id].deskFolderId = targetFolderId; });
+      localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+      selectedIcons = []; 
+      notify(`Перемещено в папку`, 'success');
+      renderDesktop();
+  }
+
+  window.openDeskFolder = (fId, name) => {
+      currentOpenDeskFolder = fId;
+      document.getElementById('desk-folder-title').textContent = name;
+      openWin('win-desk-folder');
+      renderDesktop(); 
+  }
+  
+  document.querySelector('[data-close="win-desk-folder"]').addEventListener('click', () => {
+      currentOpenDeskFolder = null;
+      renderDesktop(); 
+  });
+
+  // --- МЕНЕДЖЕР ПРИЛОЖЕНИЙ ---
+  function updateAppManagerList(myApps) {
+    const mgrCont = document.getElementById('app-manager-list');
+    mgrCont.innerHTML = '';
+    for(let id in myApps) {
+        const app = myApps[id];
+        const typeTag = app.type === 'url' ? '🌐 Ярлык' : '📦 Прил.';
+        mgrCont.innerHTML += `
+        <div class="list-item">
+            <div>${app.icon} <b>${app.name}</b> <small style="opacity:0.5">[${typeTag}]</small></div>
+            <div>
+                <button class="btn" style="width:auto; padding:5px 10px; margin:0; background:var(--danger)" onclick="removeApp('${id}', event)">Удал</button>
+            </div>
+        </div>`;
+    }
+  }
+
+  window.removeApp = (id, e) => { 
+    if(e) e.stopPropagation(); 
+    if(!confirm(`Удалить?`)) return;
+    const targetApps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)); 
+    delete targetApps[id]; 
+    localStorage.setItem(`apps_${currentUser}`, JSON.stringify(targetApps)); 
+    renderDesktop();
+    updateStorageChart();
+    notify("Удалено");
+  };
+  
+  document.getElementById('app-upload').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const apps = JSON.parse(localStorage.getItem(`apps_${currentUser}`)) || {};
+        const name = file.name.replace(/\.[^/.]+$/, ""); 
+        apps['app_'+Date.now()] = { name: name, icon: '🚀', type: 'internal', code: ev.target.result, deskFolderId: null };
+        localStorage.setItem(`apps_${currentUser}`, JSON.stringify(apps));
+        renderDesktop();
+        updateStorageChart();
+        notify(`Установлено: ${name}`, "success");
+      };
+      reader.readAsText(file);
+      e.target.value = ''; 
+  };
+
+  // --- ЗАПУСК ОКОН И ПРИЛОЖЕНИЙ ---
+  window.runApp = (id, app) => { 
+      let w = document.getElementById('run-'+id); 
+      if(!w){ 
+          if(highestZ > 10000) highestZ = 1000;
+          w = document.createElement('div'); 
+          w.id = 'run-'+id; w.className = 'window'; 
+          w.style.cssText = "width:80%;height:60%;top:20%;left:10%;display:flex;"; 
+          w.innerHTML = `
+              <div class="win-header">
+                  <span>${app.icon} ${app.name}</span>
+                  <div>
+                      <button class="ctrl-btn" style="background:var(--danger);" onclick="this.closest('.window').remove()">✕</button>
+                  </div>
+              </div>
+              <div class="win-content" style="padding:0;">
+                  <iframe id="frame-${id}" style="width:100%;height:100%;border:none;background:#fff;" sandbox="allow-scripts allow-same-origin"></iframe>
+              </div>
+          `; 
+          document.body.appendChild(w); 
+          const iframe = document.getElementById('frame-'+id);
+          iframe.srcdoc = app.code;
+          initDrag(w); initResize(w); 
+      } 
+      w.style.display = 'flex'; 
+      w.style.zIndex = ++highestZ; 
+      document.getElementById('main-menu').classList.remove('active'); 
+  }
+
+  window.openWin = id => { 
+      if(highestZ > 10000) highestZ = 1000;
+      const w=document.getElementById(id); 
+      w.style.display='flex'; 
+      w.style.zIndex=++highestZ; 
+      document.getElementById('main-menu').classList.remove('active'); 
+  };
+  
+  window.fullReset = () => { if(confirm("ВНИМАНИЕ! Удалить ВСЁ?")) { localStorage.clear(); location.reload(); }};
+
+  document.getElementById('file-upload').onchange = e => { 
+      const f=e.target.files[0]; if(!f)return; 
+      const r=new FileReader(); 
+      r.onload=ev=>{
+          state.bgValue=ev.target.result; 
+          saveProfile(); 
+          applySettings();
+          notify("Обои установлены", "success");
+      }; 
+      r.readAsDataURL(f); e.target.value=''; 
+  };
+
+  document.addEventListener('click', e => { const b=e.target.closest('[data-close]'); if(b)document.getElementById(b.getAttribute('data-close')).style.display='none'; });
+  
+  function initDrag(w) { const h=w.querySelector('.win-header'); if(!h)return; h.onmousedown=h.ontouchstart=e=>{ w.style.zIndex=++highestZ; let sX=(e.clientX||e.touches[0].clientX)-w.offsetLeft, sY=(e.clientY||e.touches[0].clientY)-w.offsetTop; document.onmousemove=document.ontouchmove=ev=>{ w.style.left=Math.max(0,Math.min((ev.clientX||ev.touches[0].clientX)-sX,window.innerWidth-60))+'px'; w.style.top=Math.max(0,Math.min((ev.clientY||ev.touches[0].clientY)-sY,window.innerHeight-60))+'px'; }; document.onmouseup=document.ontouchend=()=>document.onmousemove=document.ontouchmove=null; }; }
+  
+  function initResize(w) { let r=w.querySelector('.resize-handle'); if(!r){r=document.createElement('div');r.className='resize-handle';w.appendChild(r);} r.onmousedown=r.ontouchstart=e=>{ e.stopPropagation(); w.style.zIndex=++highestZ; let sW=w.offsetWidth, sH=w.offsetHeight, sX=e.clientX||e.touches[0].clientX, sY=e.clientY||e.touches[0].clientY; document.onmousemove=document.ontouchmove=ev=>{ w.style.width=Math.max(250,sW+((ev.clientX||ev.touches[0].clientX)-sX))+'px'; w.style.height=Math.max(150,sH+((ev.clientY||ev.touches[0].clientY)-sY))+'px'; }; document.onmouseup=document.ontouchend=()=>document.onmousemove=document.ontouchmove=null; }; }
+
+})();
+</script>
+</body>
+</html>
