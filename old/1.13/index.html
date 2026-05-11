@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS 1.13</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/themes.css">
+</head>
+<body data-ctrl-pos="right" data-taskbar-pos="horizontal">
+
+<div id="toast-container"></div>
+<div id="snap-highlight"></div>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h2>WebSAOS 1.13</h2>
+    <p style="font-size:12px; opacity:0.7; margin-top:-10px;">Выберите профиль</p>
+    <div id="users-grid" class="users-grid"></div>
+    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+    <p style="font-size:12px; font-weight:bold; cursor:pointer; color:var(--accent)" onclick="toggleNewUserForm()">+ Создать пользователя</p>
+    <div id="new-user-form" style="display:none; text-align:left;">
+      <input type="text" id="new-u-name" placeholder="Имя профиля">
+      <input type="text" id="new-u-icon" placeholder="Иконка (напр. 👑)" value="👤">
+      <input type="password" id="new-u-pass" placeholder="Пароль">
+      <button class="btn" onclick="createNewUser()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<div id="context-menu" class="context-menu-base">
+  <div class="cm-item" onclick="createNewFolder()">📁 Создать папку</div>
+  <div class="cm-item" onclick="createUrlShortcut()">🌐 Создать ярлык (URL)</div>
+  <div class="cm-item" onclick="openWin('win-settings')">⚙️ Настройки системы</div>
+  <div class="cm-item" onclick="toggleControlCenter()">🎛 Кастомизация интерфейса</div>
+</div>
+
+<div id="icon-context-menu" class="context-menu-base"></div>
+
+<div id="widget-context-menu" class="context-menu-base">
+  <div class="cm-item" id="wcm-max">🔲 На весь экран</div>
+  <div class="cm-item" id="wcm-close" style="color: var(--danger)">✕ Закрыть окно</div>
+</div>
+
+<div id="desktop" class="desktop"></div>
+<div id="desktop-icons" class="desktop-icons"></div>
+
+<div id="clock-widget" style="left: 100px; top: 100px; display: none;">
+    <div id="clock-time">00:00</div>
+    <div id="clock-date">01.01.2026</div>
+</div>
+
+<div id="windows-widget">
+    <div class="ww-drag-handle">⋮⋮</div>
+    <div class="ww-icon" onclick="openWin('win-ww-settings')" title="Настройки виджета">⚙️</div>
+    <div id="ww-icons-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+</div>
+
+<div id="storage-widget" onclick="showStorageInfo()">
+  <svg viewBox="0 0 36 36" class="circular-chart"><path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" /><path class="circle" id="storage-circle" stroke="#2ecc71" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" /></svg>
+  <div class="storage-text" id="storage-text">0%</div>
+</div>
+
+<div id="control-center" onclick="event.stopPropagation()">
+  <div class="cc-header">
+    <button class="ctrl-btn" style="background:var(--danger)" onclick="toggleControlCenter(event)">✕</button>
+  </div>
+  
+  <div class="cc-section">
+    <div class="cc-section-title">🎨 Темы оформления</div>
+    <div class="cc-slider-group">
+      <label>Выберите пресет:</label>
+      <select id="sel-theme" onchange="applyThemePreset(this.value)">
+        <option value="">-- Индивидуальная настройка --</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="cc-section">
+    <div class="cc-section-title">🪟 Окна и Виджеты</div>
+    <div class="cc-slider-group">
+      <label>Прилипание к краям (Snap): <input type="checkbox" id="cc-snap-windows" onchange="updateSnapping()"></label>
+    </div>
+    <div class="cc-slider-group">
+      <label>Кнопки управления окном:</label>
+      <select id="sel-win-ctrl-pos" onchange="changeWinCtrlPos(this.value)">
+        <option value="right">Справа (Windows)</option>
+        <option value="left">Слева (macOS)</option>
+        <option value="center">По центру</option>
+      </select>
+    </div>
+    <div class="cc-slider-group">
+      <label>Ориентация панели задач:</label>
+      <select id="sel-taskbar-pos" onchange="changeTaskbarPos(this.value)">
+        <option value="horizontal">Горизонтально (Внизу)</option>
+        <option value="vertical">Вертикально (Слева)</option>
+      </select>
+    </div>
+    <div style="height: 1px; background: rgba(128,128,128,0.2); margin: 5px 0;"></div>
+    <div class="cc-slider-group">
+      <label>Настройки виджета:</label>
+      <select id="sel-widget" onchange="loadWidgetSettings(this.value)">
+        <option value="clock-widget">Часы</option>
+        <option value="windows-widget">Dock панель (Окна)</option>
+        <option value="storage-widget">Хранилище</option>
+      </select>
+    </div>
+    <div class="cc-slider-group"><label>Отображать <input type="checkbox" id="widget-visible" onchange="updateWidgetSettings()"></label></div>
+    <div class="cc-slider-group"><label>Поверх всех окон <input type="checkbox" id="widget-top" onchange="updateWidgetSettings()"></label></div>
+  </div>
+
+  <div class="cc-section">
+    <div class="cc-section-title">🔲 Закругление углов</div>
+    <div class="cc-slider-group">
+      <label>Элемент интерфейса:</label>
+      <select id="sel-radius-target" onchange="loadRadiiUI()">
+        <option value="--win-radius">Окна</option>
+        <option value="--menu-radius">Виджеты и Меню</option>
+        <option value="--btn-radius">Кнопки и Иконки</option>
+      </select>
+    </div>
+    <div class="radius-grid">
+      <div class="cc-slider-group"><label>Лев. Верх</label><input type="range" min="0" max="50" value="16" id="r-tl" oninput="updateRadii()"></div>
+      <div class="cc-slider-group"><label>Прав. Верх</label><input type="range" min="0" max="50" value="16" id="r-tr" oninput="updateRadii()"></div>
+      <div class="cc-slider-group"><label>Лев. Низ</label><input type="range" min="0" max="50" value="16" id="r-bl" oninput="updateRadii()"></div>
+      <div class="cc-slider-group"><label>Прав. Низ</label><input type="range" min="0" max="50" value="16" id="r-br" oninput="updateRadii()"></div>
+    </div>
+  </div>
+
+  <div class="cc-section">
+    <div class="cc-section-title">✨ Общий стиль</div>
+    <div class="cc-slider-group"><label>Светлая тема <input type="checkbox" id="cc-theme-mode" onchange="toggleLightMode(this.checked)"></label></div>
+    <div class="cc-slider-group"><label>Акцентный цвет: <input type="color" id="cc-accent" oninput="changeCssVar('--accent', this.value)"></label></div>
+    <div class="cc-slider-group"><label>Цвет рамок (Border): <input type="color" id="cc-border" oninput="changeCssVar('--win-border', this.value)"></label></div>
+    <div class="cc-slider-group"><label>Глубина теней <span id="lbl-shd">0.5</span></label><input type="range" min="0" max="1" step="0.1" value="0.5" id="cc-shadow" oninput="changeCssVar('--shadow-op', this.value, 'lbl-shd')"></div>
+  </div>
+  <div class="cc-section">
+    <div class="cc-section-title">🌫 Стекло и Фон</div>
+    <div class="cc-slider-group"><label>Прозрачность <span id="lbl-op">0.85</span></label><input type="range" min="0.1" max="1" step="0.05" value="0.85" id="cc-opacity" oninput="changeCssVar('--win-opacity', this.value, 'lbl-op')"></div>
+    <div class="cc-slider-group"><label>Размытие стекла <span id="lbl-gbl">15px</span></label><input type="range" min="0" max="40" step="1" value="15" id="cc-glass" oninput="changeCssVar('--glass-blur', this.value + 'px', 'lbl-gbl')"></div>
+    <div class="cc-slider-group"><label>Размытие обоев <span id="lbl-bl">0px</span></label><input type="range" min="0" max="30" step="1" value="0" id="cc-bg-blur" oninput="changeCssVar('--blur', this.value + 'px', 'lbl-bl')"></div>
+  </div>
+  <div class="cc-section">
+    <div class="cc-section-title">🎬 Анимации Окон</div>
+    <div class="cc-slider-group">
+      <label>При открытии:</label>
+      <select id="sel-anim-open" onchange="changeAnim('open', this.value)">
+        <option value="anim-fade">Плавное появление (Fade)</option>
+        <option value="anim-zoom">Увеличение (Zoom)</option>
+        <option value="anim-slide">Выезд снизу (Slide)</option>
+        <option value="anim-flip">Вращение 3D (Flip)</option>
+        <option value="anim-page">Перелистывание страницы</option>
+      </select>
+    </div>
+    <div class="cc-slider-group">
+      <label>При перемещении (Физика):</label>
+      <select id="sel-anim-move" onchange="changeAnim('move', this.value)">
+        <option value="move-none">Стандартно (Без эффектов)</option>
+        <option value="move-tilt">Наклон в сторону (Tilt)</option>
+        <option value="move-cloth">Эффект ткани/желе (Cloth)</option>
+        <option value="move-scale">Уменьшение (Scale)</option>
+        <option value="move-ghost">Прозрачность (Ghost)</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-upload" accept="image/*" style="display:none">
+<input type="file" id="app-upload" accept=".js,.html,text/html,text/javascript" style="display:none">
+<input type="file" id="backup-upload" accept=".json" style="display:none">
+
+<div class="taskbar-container" id="taskbar-container">
+  <div class="burger" id="burger-btn" onclick="toggleMenu(event)">📱</div> 
+  <div class="taskbar" id="main-menu">
+    <div class="icon-btn" onclick="openWin('win-file-manager')" title="Файловый менеджер">📁</div>
+    <div class="icon-btn" onclick="openWin('win-terminal')" title="Терминал">🔲</div>
+    <div class="icon-btn" onclick="openWin('win-notepad')" title="Блокнот">📝</div>
+    <div class="taskbar-divider"></div>
+    <div class="icon-btn" onclick="openAppManager()" title="Менеджер">📦</div>
+    <div class="icon-btn" onclick="toggleControlCenter(event)" title="Кастомизация">🎨</div>
+    <div class="icon-btn" onclick="openWin('win-settings')" title="Настройки">⚙️</div>
+    <div class="icon-btn" onclick="logout()" title="Выход" style="background: rgba(255, 77, 77, 0.3);">🚪</div>
+  </div>
+</div>
+
+<div id="win-app-manager" class="window" style="width:85%; height:75%; top:10%; left:7%;">
+  <div class="win-header">
+    <span id="mgr-title">Менеджер Приложений</span>
+    <div class="win-controls">
+      <button class="ctrl-btn" onclick="minimizeWindow('win-app-manager')">_</button>
+      <button class="ctrl-btn" onclick="maximizeWindow('win-app-manager')">□</button>
+      <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-app-manager')">✕</button>
+    </div>
+  </div>
+  <div class="win-content">
+    <button class="btn" onclick="document.getElementById('app-upload').click()">📥 Установить приложение</button>
+    <div id="app-manager-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; margin-top:10px;"></div>
+  </div>
+</div>
+
+<div id="win-app-editor" class="window" style="width:90%; height:85%; top:5%; left:5%;">
+  <div class="win-header">
+    <span>Редактор Приложения</span>
+    <div class="win-controls">
+      <button class="ctrl-btn" onclick="minimizeWindow('win-app-editor')">_</button>
+      <button class="ctrl-btn" onclick="maximizeWindow('win-app-editor')">□</button>
+      <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-app-editor')">✕</button>
+    </div>
+  </div>
+  <div class="win-content" style="gap:10px;">
+    <input type="hidden" id="edit-id">
+    <input type="hidden" id="edit-owner">
+    <div style="display:flex; gap:10px;">
+      <input type="text" id="edit-icon" style="width:60px; text-align:center;" title="Эмодзи">
+      <input type="text" id="edit-name" placeholder="Название" style="flex:1;">
+    </div>
+    <textarea id="edit-code" style="flex:1; font-family:monospace; font-size:12px; white-space: pre;" placeholder="HTML/JS Код"></textarea>
+    <button class="btn" style="background:#2ecc71" onclick="saveEditedApp()">💾 Сохранить изменения</button>
+  </div>
+</div>
+
+<div id="win-settings" class="window" style="width:320px; height:200px; top:20%; left:20%;">
+    <div class="win-header">
+      <span>Настройки системы</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-settings')">_</button>
+        <button class="ctrl-btn" onclick="maximizeWindow('win-settings')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-settings')">✕</button>
+      </div>
+    </div>
+    <div class="win-content">
+      <button class="btn" onclick="document.getElementById('file-upload').click()">🖼 Установить обои</button>
+      <button class="btn" style="background:var(--danger); margin-top:20px;" onclick="fullReset()">Сбросить систему</button>
+    </div>
+</div>
+
+<div id="win-ww-settings" class="window" style="width:300px; height:auto; top:20%; left:20%;">
+    <div class="win-header">
+      <span>Настройки виджета окон</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-ww-settings')">_</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-ww-settings')">✕</button>
+      </div>
+    </div>
+    <div class="win-content">
+      <div class="cc-slider-group" style="margin-bottom:15px;">
+        <label>Цвет фона виджета: <input type="color" id="ww-set-bg" oninput="updateWWSettings()"></label>
+      </div>
+      <div class="cc-slider-group" style="margin-bottom:15px;">
+        <label>Прозрачность <span id="lbl-ww-op">0.8</span></label>
+        <input type="range" min="0.1" max="1" step="0.1" value="0.8" id="ww-set-op" oninput="updateWWSettings()">
+      </div>
+      <div class="cc-slider-group" style="margin-bottom:15px;">
+        <label>Цвет рамки: <input type="color" id="ww-set-border" oninput="updateWWSettings()"></label>
+      </div>
+      <div class="cc-slider-group">
+        <label>Подтверждать закрытие окон <input type="checkbox" id="ww-set-confirm" onchange="updateWWSettings()"></label>
+      </div>
+    </div>
+</div>
+
+<div id="win-terminal" class="window" style="width:450px; height:350px; top:15%; left:15%; background: rgba(10,10,10,0.95);">
+    <div class="win-header" style="background:#222; border-bottom:1px solid #444;">
+      <span style="color:#fff;">Терминал ОС</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" style="color:#fff" onclick="minimizeWindow('win-terminal')">_</button>
+        <button class="ctrl-btn" style="color:#fff" onclick="maximizeWindow('win-terminal')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-terminal')">✕</button>
+      </div>
+    </div>
+    <div class="win-content" style="flex-direction:column; padding:10px; font-family:monospace; color:#eee;">
+      <div id="term-output" style="flex:1; overflow-y:auto; font-size:13px; margin-bottom:10px; word-break:break-all;">
+        <div class="term-line" style="color:#2ecc71;">WebSAOS Terminal v1.13</div>
+        <div class="term-line" style="color:#aaa;">Для справки по переменным откройте Файлы -> Справка_терминала.txt</div>
+        <div class="term-line" style="color:#aaa;">Введите help для помощи.</div><br>
+      </div>
+      <div class="term-input-wrapper">
+        <span>root@os:~$</span>
+        <input type="text" id="term-input" style="background:transparent; border:none; color:#fff; outline:none; font-family:monospace; font-size:14px; flex:1; padding:0; margin:0;" autocomplete="off" onkeydown="if(event.key==='Enter') runTermCmd(this)">
+      </div>
+    </div>
+</div>
+
+<div id="win-file-manager" class="window" style="width:650px; height:450px; top:10%; left:15%;">
+    <div class="win-header">
+      <span>Файловый менеджер</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-file-manager')">_</button>
+        <button class="ctrl-btn" onclick="maximizeWindow('win-file-manager')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-file-manager')">✕</button>
+      </div>
+    </div>
+    <div class="win-content" style="padding:0; flex-direction:row;">
+      <div class="fm-sidebar" id="fm-sidebar">
+         <div class="fm-tab active" onclick="switchFMTab('docs', this)">📄 Документы</div>
+         <div class="fm-tab" onclick="switchFMTab('system', this)">⚙️ Система</div>
+         <div class="fm-tab" onclick="switchFMTab('desktop', this)">🖥 Рабочий стол</div>
+         <div class="fm-tab" onclick="switchFMTab('backup', this)">💾 Бэкап ОС</div>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; padding:10px; position:relative;">
+        <div id="fm-controls" style="margin-bottom:15px; display:flex; gap:10px;"></div>
+        <div id="fm-grid" class="folder-grid" style="flex:1; overflow-y:auto; background:rgba(0,0,0,0.2); padding:10px; border-radius:10px;"></div>
+      </div>
+    </div>
+</div>
+
+<div id="win-notepad" class="window" style="width:400px; height:400px; top:25%; left:30%;">
+    <div class="win-header">
+      <span id="np-title">Блокнот</span>
+      <div class="win-controls">
+        <button class="ctrl-btn" onclick="minimizeWindow('win-notepad')">_</button>
+        <button class="ctrl-btn" onclick="maximizeWindow('win-notepad')">□</button>
+        <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-notepad')">✕</button>
+      </div>
+    </div>
+    <div class="win-content" style="display:flex; flex-direction:column; padding:0;">
+      <div style="padding:5px 10px; background:rgba(128,128,128,0.1); display:flex; gap:10px; align-items:center;">
+          <button class="btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="saveNotepad()">💾 Сохранить</button>
+          <input type="text" id="np-filename" placeholder="Имя файла..." style="margin:0; padding:5px; flex:1; font-size:12px; border:none; background:rgba(0,0,0,0.2);" data-path="">
+      </div>
+      <textarea id="np-text" style="flex:1; border:none; border-radius:0; resize:none; margin:0; padding:15px; font-family:monospace; font-size:13px; background:rgba(0,0,0,0.1);" placeholder="Введите текст..."></textarea>
+    </div>
+</div>
+
+<script src="js/vfs.js"></script>
+<script src="js/game_service.js"></script>
+<script src="js/themes.js"></script>
+<script src="js/core.js"></script>
+</body>
+</html>
