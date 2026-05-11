@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta <!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS</title>
+<style>
+  :root {
+    --accent: #2b8cff; --danger: #ff4d4d; --warning: #f1c40f;
+    --bg: #0f1720; --panel: rgba(255,255,255,0.08); --text: #e6eef8;
+  }
+  * { box-sizing: border-box; -webkit-touch-callout: none; }
+  html, body {
+    height: 100%; margin: 0; overflow: hidden;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  
+  .desktop {
+    position: relative; width: 100%; height: 100vh;
+    background: radial-gradient(circle at center, #1e2f44 0%, #0f1720 100%);
+    background-size: cover; background-position: center;
+    transition: background 0.5s ease;
+  }
+
+  /* Taskbar */
+  .taskbar {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 18px;
+    background: rgba(15, 23, 32, 0.8); backdrop-filter: blur(20px);
+    border-radius: 22px; border: 1px solid rgba(255,255,255,0.1); z-index: 9999;
+  }
+  .icon-btn {
+    width: 48px; height: 48px; border-radius: 14px; background: var(--panel);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; cursor: pointer; transition: 0.2s; position: relative;
+  }
+  .icon-btn:active { transform: scale(0.9); }
+  .icon-btn:hover { background: rgba(255,255,255,0.15); }
+
+  /* Window System */
+  .window {
+    position: absolute; background: #161f29; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 30px 70px rgba(0,0,0,0.7);
+    display: none; flex-direction: column; overflow: hidden; z-index: 500; touch-action: none;
+    min-width: 200px; min-height: 150px;
+  }
+  .win-header {
+    height: 48px; background: rgba(255,255,255,0.03);
+    display: flex; align-items: center; justify-content: center;
+    cursor: move; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .win-title { position: absolute; left: 15px; font-size: 11px; opacity: 0.5; pointer-events: none; }
+  .central-controls { display: flex; gap: 10px; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; }
+  .ctrl-btn { width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  
+  .win-content { flex: 1; overflow: auto; padding: 15px; position: relative; }
+
+  /* UI Components */
+  .btn { padding: 10px 15px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer; font-size: 13px; }
+  .btn-danger { background: var(--danger); }
+  .storage-bar { width: 100%; height: 10px; background: #333; border-radius: 5px; overflow: hidden; margin: 10px 0; }
+  .storage-fill { height: 100%; background: var(--accent); transition: 0.3s; }
+  .app-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--panel); border-radius: 10px; margin-bottom: 8px; }
+
+  #noteTextarea { width: 100%; height: 200px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; font-family: monospace; outline: none; }
+  
+  .resizer { width: 20px; height: 20px; position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 10; }
+  .maximized { top: 0 !important; left: 0 !important; width: 100vw !important; height: calc(100vh - 84px) !important; border-radius: 0; }
+</style>
+</head>
+<body>
+
+<div id="desktop" class="desktop"></div>
+
+<div class="taskbar" id="taskbar">
+  <div class="icon-btn" onclick="openWin('win-fm')" title="Проводник">📁</div>
+  <div class="icon-btn" onclick="openWin('win-note')" title="Блокнот">📝</div>
+  <div class="icon-btn" onclick="openWin('win-apps')" title="Приложения">🚀</div>
+  <div class="icon-btn" onclick="openWin('win-settings')" title="Настройки">⚙️</div>
+</div>
+
+<div id="win-apps" class="window" style="width:380px; height:480px;">
+  <div class="win-header">
+    <div class="win-title">System Manager</div>
+    <div class="central-controls">
+      <button class="ctrl-btn" style="background:var(--warning)" onclick="hideWin('win-apps')">—</button>
+      <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-apps')">✕</button>
+    </div>
+  </div>
+  <div class="win-content">
+    <h3>Память (LocalStorage)</h3>
+    <div id="mem-text" style="font-size:12px; opacity:0.6;">0 KB / 5120 KB</div>
+    <div class="storage-bar"><div id="mem-fill" class="storage-fill" style="width:0%"></div></div>
+    
+    <h3 style="margin-top:20px;">Установлено</h3>
+    <div id="app-list-container"></div>
+    <div class="resizer"></div>
+  </div>
+</div>
+
+<div id="win-note" class="window" style="width:450px; height:400px;">
+  <div class="win-header">
+    <div class="win-title">Блокнот</div>
+    <div class="central-controls">
+      <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-note')">✕</button>
+    </div>
+  </div>
+  <div class="win-content">
+    <textarea id="noteTextarea" placeholder="Напишите код приложения здесь..."></textarea>
+    <div style="margin-top:10px; display:flex; gap:10px;">
+        <button class="btn" onclick="installFromNote()">💾 Установить как App</button>
+        <button class="btn" style="background:var(--panel)" onclick="document.getElementById('noteTextarea').value=''">Очистить</button>
+    </div>
+    <div class="resizer"></div>
+  </div>
+</div>
+
+<div id="win-fm" class="window" style="width:400px; height:300px;">
+    <div class="win-header">
+      <div class="win-title">Проводник</div>
+      <div class="central-controls"><button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-fm')">✕</button></div>
+    </div>
+    <div class="win-content">
+      <button class="btn" onclick="document.getElementById('fileInp').click()">📥 Выбрать .js файл</button>
+      <input type="file" id="fileInp" hidden onchange="installFromFile(this)">
+      <div id="fm-files" style="margin-top:15px;"></div>
+      <div class="resizer"></div>
+    </div>
+</div>
+
+<div id="win-settings" class="window" style="width:300px; height:220px;">
+    <div class="win-header">
+      <div class="win-title">Настройки</div>
+      <div class="central-controls"><button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-settings')">✕</button></div>
+    </div>
+    <div class="win-content">
+      <button class="btn btn-danger" style="width:100%" onclick="fullReset()">Полный сброс системы</button>
+      <p style="font-size:10px; opacity:0.4; text-align:center; margin-top:20px;">WebSAOS v.1.1 Gold Build</p>
+    </div>
+</div>
+
+<script>
+  let highestZ = 1000;
+  // Реестр приложений {name, code, icon}
+  let registry = JSON.parse(localStorage.getItem('websaos_registry')) || [];
+
+  // --- СИСТЕМА УСТАНОВКИ ---
+  function installFromNote() {
+    const code = document.getElementById('noteTextarea').value;
+    if(!code) return;
+    const name = prompt("Имя приложения (например, Snake):");
+    if(name) saveToRegistry(name, code);
+  }
+
+  function installFromFile(input) {
+    const f = input.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = (e) => saveToRegistry(f.name.replace('.js',''), e.target.result);
+    r.readAsText(f);
+  }
+
+  function saveToRegistry(name, code) {
+    // Если приложение с таким именем есть — заменяем
+    registry = registry.filter(a => a.name !== name);
+    registry.push({ name, code });
+    localStorage.setItem('websaos_registry', JSON.stringify(registry));
+    alert(`Приложение ${name} установлено!`);
+    location.reload(); // Перезагрузка для инициализации иконок
+  }
+
+  function uninstallApp(name) {
+    if(confirm(`Удалить ${name}?`)) {
+      registry = registry.filter(a => a.name !== name);
+      localStorage.setItem('websaos_registry', JSON.stringify(registry));
+      location.reload();
+    }
+  }
+
+  // --- ЗАПУСК ПРИЛОЖЕНИЙ ---
+  function initApps() {
+    registry.forEach(app => {
+      // Создаем иконку в таскбаре
+      const btn = document.createElement('div');
+      btn.className = 'icon-btn';
+      btn.innerHTML = '📦'; // Стандартная иконка, если в коде нет своей
+      btn.dataset.app = app.name;
+      btn.title = app.name;
+      
+      // Запускаем код приложения (оно само может заменить иконку и создать логику)
+      try {
+        const script = document.createElement('script');
+        script.textContent = app.code;
+        document.body.appendChild(script);
+      } catch(e) { console.error("Ошибка в приложении " + app.name, e); }
+
+      // Если после выполнения скрипта у иконки нет onclick, ставим дефолт
+      if(!btn.onclick) {
+        btn.onclick = () => alert("Приложение запущено, но не создало окно. Проверьте код.");
+      }
+      
+      document.getElementById('taskbar').appendChild(btn);
+    });
+  }
+
+  // --- ЯДРО ОКОН ---
+  function openWin(id) {
+    const w = document.getElementById(id);
+    if(!w) return;
+    w.style.display = 'flex';
+    if(!w.style.left) { w.style.left = '50px'; w.style.top = '50px'; }
+    focusWin(w);
+    if(id === 'win-apps') updateStats();
+  }
+
+  function closeWin(id) { 
+    const w = document.getElementById(id);
+    if(w) w.style.display = 'none'; 
+  }
+
+  function hideWin(id) { document.getElementById(id).style.display = 'none'; }
+
+  function focusWin(w) { w.style.zIndex = ++highestZ; }
+
+  // Универсальная функция инициализации перемещения и ресайза
+  function makeDraggable(win) {
+    const h = win.querySelector('.win-header');
+    const r = win.querySelector('.resizer');
+
+    const onMove = (e) => {
+      if(e.target.closest('.ctrl-btn')) return;
+      const t = e.touches ? e.touches[0] : e;
+      let ox = t.clientX - win.offsetLeft, oy = t.clientY - win.offsetTop;
+      const move = (me) => {
+        const mt = me.touches ? me.touches[0] : me;
+        win.style.left = (mt.clientX - ox) + 'px';
+        win.style.top = (mt.clientY - oy) + 'px';
+      };
+      const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('touchmove', move); };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('touchmove', move, {passive:false});
+      document.addEventListener('mouseup', stop); document.addEventListener('touchend', stop);
+    };
+
+    const onResize = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const t = e.touches ? e.touches[0] : e;
+        let sw = win.offsetWidth, sh = win.offsetHeight, sx = t.clientX, sy = t.clientY;
+        const rm = (me) => {
+            const mt = me.touches ? me.touches[0] : me;
+            win.style.width = (sw + (mt.clientX - sx)) + 'px';
+            win.style.height = (sh + (mt.clientY - sy)) + 'px';
+        };
+        const rs = () => { document.removeEventListener('mousemove', rm); document.removeEventListener('touchmove', rm); };
+        document.addEventListener('mousemove', rm); document.addEventListener('touchmove', rm, {passive:false});
+        document.addEventListener('mouseup', rs); document.addEventListener('touchend', rs);
+    };
+
+    h.addEventListener('mousedown', onMove); h.addEventListener('touchstart', onMove, {passive:false});
+    if(r) { r.addEventListener('mousedown', onResize); r.addEventListener('touchstart', onResize, {passive:false}); }
+    win.addEventListener('mousedown', () => focusWin(win));
+  }
+
+  // --- МОНИТОРИНГ ---
+  function updateStats() {
+    const container = document.getElementById('app-list-container');
+    container.innerHTML = '';
+    registry.forEach(a => {
+      container.innerHTML += `<div class="app-item"><span>${a.name}</span><button class="btn btn-danger" onclick="uninstallApp('${a.name}')">Удалить</button></div>`;
+    });
+
+    const used = JSON.stringify(localStorage).length;
+    const limit = 5 * 1024 * 1024;
+    const p = (used / limit) * 100;
+    document.getElementById('mem-fill').style.width = p + '%';
+    document.getElementById('mem-text').innerText = `${(used/1024).toFixed(1)} KB / 5120 KB`;
+  }
+
+  // --- УПРАВЛЕНИЕ КОНТЕКСТОМ ---
+  document.addEventListener('contextmenu', e => {
+    const icon = e.target.closest('.icon-btn');
+    if(icon && icon.dataset.app) {
+      e.preventDefault();
+      uninstallApp(icon.dataset.app);
+    }
+  });
+
+  function fullReset() { if(confirm("ВНИМАНИЕ! Это удалит все приложения и настройки. Продолжить?")) { localStorage.clear(); location.reload(); } }
+
+  // Инициализация системы
+  window.onload = () => {
+    document.querySelectorAll('.window').forEach(makeDraggable);
+    initApps();
+  };
+</script>
+</body>
+</html>
+" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebSAOS 1.1 | Persistent</title>
+<style>
+  :root {
+    --accent: #2b8cff; --danger: #ff4d4d; --warning: #f1c40f;
+    --bg: #0f1720; --panel: rgba(255,255,255,0.08); --text: #e6eef8;
+  }
+  * { box-sizing: border-box; -webkit-touch-callout: none; }
+  html, body {
+    height: 100%; margin: 0; overflow: hidden;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  
+  .desktop {
+    position: relative; width: 100%; height: 100vh;
+    background: radial-gradient(circle at center, #1e2f44 0%, #0f1720 100%);
+    background-size: cover; background-position: center;
+  }
+
+  /* Taskbar */
+  .taskbar {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 18px;
+    background: rgba(15, 23, 32, 0.8); backdrop-filter: blur(20px);
+    border-radius: 22px; border: 1px solid rgba(255,255,255,0.1); z-index: 9999;
+  }
+  .icon-btn {
+    width: 46px; height: 46px; border-radius: 14px; background: var(--panel);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; cursor: pointer; transition: 0.2s; position: relative;
+  }
+  .icon-btn:active { transform: scale(0.9); }
+
+  /* Window System */
+  .window {
+    position: absolute; background: #161f29; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 30px 70px rgba(0,0,0,0.7);
+    display: none; flex-direction: column; overflow: hidden; z-index: 500; touch-action: none;
+  }
+  .win-header {
+    height: 48px; background: rgba(255,255,255,0.03);
+    display: flex; align-items: center; justify-content: center;
+    cursor: move; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .central-controls { display: flex; gap: 10px; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; }
+  .ctrl-btn { width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
+  
+  .win-content { flex: 1; overflow: auto; padding: 15px; position: relative; }
+
+  /* Stats UI */
+  .storage-bar { width: 100%; height: 12px; background: #333; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+  .storage-fill { height: 100%; background: var(--accent); transition: 0.3s; }
+  
+  .app-list-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px; background: var(--panel); border-radius: 8px; margin-bottom: 8px;
+  }
+
+  .btn { padding: 8px 12px; border-radius: 6px; border: none; background: var(--accent); color: white; cursor: pointer; }
+  .resizer { width: 24px; height: 24px; position: absolute; right: 0; bottom: 0; cursor: nwse-resize; }
+  .maximized { top: 0 !important; left: 0 !important; width: 100vw !important; height: calc(100vh - 84px) !important; border-radius: 0; }
+</style>
+</head>
+<body>
+
+<div id="desktop" class="desktop"></div>
+
+<div class="taskbar" id="taskbar">
+  <div class="icon-btn" onclick="openWin('win-fm')" title="Файлы">📁</div>
+  <div class="icon-btn" onclick="openWin('win-note')" title="Блокнот">📝</div>
+  <div class="icon-btn" onclick="openWin('win-apps')" title="Менеджер приложений">🚀</div>
+  <div class="icon-btn" onclick="openWin('win-settings')" title="Настройки">⚙️</div>
+</div>
+
+<div id="win-apps" class="window" style="width:380px; height:450px;">
+  <div class="win-header">
+    <div class="central-controls">
+      <button class="ctrl-btn" style="background:var(--warning)" onclick="hideWin('win-apps')">—</button>
+      <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-apps')">✕</button>
+    </div>
+  </div>
+  <div class="win-content">
+    <h3>Менеджер памяти</h3>
+    <div id="storage-text" style="font-size: 12px; opacity: 0.7;">Использовано: 0 KB / 5 MB</div>
+    <div class="storage-bar"><div id="storage-fill" class="storage-fill" style="width: 0%"></div></div>
+    
+    <h3 style="margin-top:25px;">Установленные модули</h3>
+    <div id="installed-apps-list"></div>
+    <div class="resizer"></div>
+  </div>
+</div>
+
+<div id="win-fm" class="window" style="width:400px; height:300px;"><div class="win-header"><div class="central-controls"><button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-fm')">✕</button></div></div><div class="win-content"><button class="btn" onclick="document.getElementById('installInput').click()">📦 Установить .js</button><input type="file" id="installInput" hidden onchange="installApp(this)"><div id="fm-list"></div><div class="resizer"></div></div></div>
+<div id="win-note" class="window" style="width:400px; height:300px;"><div class="win-header"><div class="central-controls"><button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-note')">✕</button></div></div><div class="win-content"><textarea id="noteTextarea" style="width:100%; height:80%; background:none; color:white; border:none; outline:none; resize:none;"></textarea><button class="btn" onclick="saveAsApp()">💾 Сохранить как App</button><div class="resizer"></div></div></div>
+<div id="win-settings" class="window" style="width:300px; height:200px;"><div class="win-header"><div class="central-controls"><button class="ctrl-btn" style="background:var(--danger)" onclick="closeWin('win-settings')">✕</button></div></div><div class="win-content"><button class="btn" style="background:var(--danger); width:100%" onclick="fullReset()">Полный сброс</button></div></div>
+
+<script>
+  let highestZ = 1000;
+  let registry = JSON.parse(localStorage.getItem('websaos_registry')) || [];
+
+  // --- Ядро системы приложений ---
+  function installApp(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => registerApp(file.name, e.target.result);
+    reader.readAsText(file);
+  }
+
+  function saveAsApp() {
+    const code = document.getElementById('noteTextarea').value;
+    if(!code) return;
+    const name = prompt("Имя приложения:", "app.js");
+    if(name) registerApp(name, code);
+  }
+
+  function registerApp(name, code) {
+    if(registry.find(a => a.name === name)) {
+        if(!confirm("Приложение уже существует. Перезаписать?")) return;
+        uninstallApp(name, false);
+    }
+    registry.push({ name, code });
+    localStorage.setItem('websaos_registry', JSON.stringify(registry));
+    runApp(name, code);
+    updateAppManager();
+  }
+
+  function runApp(name, code) {
+    try {
+      const script = document.createElement('script');
+      script.id = 'app-script-' + name;
+      script.textContent = code;
+      document.body.appendChild(script);
+    } catch(e) { console.error("Ошибка запуска " + name, e); }
+  }
+
+  function uninstallApp(name, reload = true) {
+    registry = registry.filter(a => a.name !== name);
+    localStorage.setItem('websaos_registry', JSON.stringify(registry));
+    const s = document.getElementById('app-script-' + name);
+    if(s) s.remove();
+    if(reload) location.reload(); // Для полной очистки памяти и иконок
+  }
+
+  // --- Менеджеры ---
+  function updateAppManager() {
+    const list = document.getElementById('installed-apps-list');
+    list.innerHTML = '';
+    registry.forEach(app => {
+      list.innerHTML += `<div class="app-list-item"><span>${app.name}</span><button class="btn" style="background:var(--danger)" onclick="uninstallApp('${app.name}')">Удалить</button></div>`;
+    });
+
+    const used = JSON.stringify(localStorage).length;
+    const limit = 5 * 1024 * 1024; // 5MB лимит браузера
+    const percent = (used / limit) * 100;
+    document.getElementById('storage-fill').style.width = percent + '%';
+    document.getElementById('storage-text').innerText = `Использовано: ${(used/1024).toFixed(1)} KB / 5120 KB`;
+  }
+
+  // --- Контекстное меню и Долгий тап ---
+  function initContextMenus() {
+    document.addEventListener('contextmenu', e => {
+      const icon = e.target.closest('.icon-btn');
+      if(icon && icon.dataset.appname) {
+        e.preventDefault();
+        if(confirm(`Удалить приложение "${icon.dataset.appname}"?`)) {
+          uninstallApp(icon.dataset.appname);
+        }
+      }
+    });
+
+    // Долгий тап для сенсора
+    let tapTimer;
+    document.addEventListener('touchstart', e => {
+      const icon = e.target.closest('.icon-btn');
+      if(icon && icon.dataset.appname) {
+        tapTimer = setTimeout(() => {
+          if(confirm(`Удалить приложение "${icon.dataset.appname}"?`)) {
+            uninstallApp(icon.dataset.appname);
+          }
+        }, 800);
+      }
+    });
+    document.addEventListener('touchend', () => clearTimeout(tapTimer));
+  }
+
+  // --- Окна и Инициализация ---
+  function openWin(id) { 
+    const w = document.getElementById(id); 
+    w.style.display = 'flex'; 
+    if(!w.style.left) { w.style.left = '50px'; w.style.top = '50px'; }
+    focusWin(w); 
+    if(id === 'win-apps') updateAppManager();
+  }
+  function closeWin(id) { document.getElementById(id).style.display = 'none'; }
+  function hideWin(id) { document.getElementById(id).style.display = 'none'; }
+  function focusWin(w) { w.style.zIndex = ++highestZ; }
+
+  // Drag & Drop / Resize (Mobile + Desktop)
+  document.querySelectorAll('.window').forEach(win => {
+    const h = win.querySelector('.win-header'), r = win.querySelector('.resizer');
+    const move = (e) => {
+      if(e.target.closest('.ctrl-btn')) return;
+      const t = e.touches ? e.touches[0] : e;
+      let ox = t.clientX - win.offsetLeft, oy = t.clientY - win.offsetTop;
+      const mm = (me) => { 
+        const mt = me.touches ? me.touches[0] : me;
+        win.style.left = (mt.clientX - ox) + 'px'; win.style.top = (mt.clientY - oy) + 'px'; 
+      };
+      const ms = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('touchmove', mm); };
+      document.addEventListener('mousemove', mm); document.addEventListener('touchmove', mm, {passive:false});
+      document.addEventListener('mouseup', ms); document.addEventListener('touchend', ms);
+    };
+    h.addEventListener('mousedown', move); h.addEventListener('touchstart', move, {passive:false});
+    win.onmousedown = () => focusWin(win);
+  });
+
+  function maximizeWin(id) { document.getElementById(id).classList.toggle('maximized'); }
+  function fullReset() { if(confirm("Сбросить систему?")) { localStorage.clear(); location.reload(); } }
+
+  window.onload = () => {
+    registry.forEach(app => runApp(app.name, app.code));
+    initContextMenus();
+    updateAppManager();
+  };
+</script>
+</body>
+</html>
