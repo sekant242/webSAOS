@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>WebOS Pro - Developer Edition</title>
+<style>
+  :root{
+    --accent:#2b8cff; --danger:#ff4d4d; --warning:#f1c40f; --bg:#0f1720;
+    --panel: rgba(255,255,255,0.08); --text:#e6eef8;
+  }
+  html,body{
+    height:100%; margin:0; overflow:hidden;
+    font-family:-apple-system, system-ui, sans-serif;
+    background:var(--bg); color:var(--text);
+    user-select:none; -webkit-tap-highlight-color: transparent;
+  }
+  
+  .desktop{ position:relative; width:100%; height:100vh; background-size:cover; background-position:center; transition: background 0.3s ease; }
+
+  /* Taskbar */
+  .taskbar{
+    position:fixed; left:50%; bottom:15px; transform: translateX(-50%);
+    height:60px; display:flex; align-items:center; gap:12px; padding:0 15px;
+    background: rgba(15, 23, 32, 0.85); backdrop-filter: blur(20px);
+    border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); z-index:9999;
+  }
+
+  .icon-btn {
+    width:44px; height:44px; border-radius:12px; background:var(--panel);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; cursor:pointer; transition: 0.2s;
+  }
+  .icon-btn:hover { background: var(--accent); transform: translateY(-4px); }
+
+  /* Window System */
+  .window{
+    position:absolute; background: #161f29; border-radius:14px;
+    border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+    display:none; flex-direction:column; min-width:300px; min-height:200px;
+    overflow: hidden; z-index: 500; touch-action: none;
+  }
+
+  .win-header {
+    height: 46px; background: rgba(255,255,255,0.04);
+    display: flex; align-items: center; justify-content: center;
+    cursor: move; border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: relative; touch-action: none;
+  }
+
+  .win-title { position: absolute; left: 15px; font-size: 11px; opacity: 0.4; pointer-events: none; }
+
+  .central-controls {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(0,0,0,0.3); padding: 5px 14px; border-radius: 25px;
+  }
+
+  .ctrl-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
+    color: white; transition: 0.2s;
+  }
+  .btn-min { background: var(--warning); color: #000; }
+  .btn-close { background: var(--danger); font-weight: bold; }
+  .btn-max { background: var(--accent); }
+
+  .win-content { flex:1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+  /* UI */
+  #noteTextarea {
+    flex: 1; width: 100%; background: transparent; color: #fff;
+    border: none; outline: none; padding: 15px; resize: none;
+    font-family: 'Consolas', monospace; font-size: 14px; line-height: 1.4;
+  }
+  .notepad-toolbar { padding: 8px; background: rgba(255,255,255,0.02); display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+  .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 15px; padding: 15px; }
+  .file-item { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border-radius: 10px; cursor: pointer; }
+  .file-item:hover { background: var(--panel); }
+  
+  .btn { padding: 6px 12px; border-radius: 6px; border: none; background: var(--accent); color: white; cursor: pointer; font-size: 12px; }
+  .resizer { width: 24px; height: 24px; position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 10; }
+  .maximized { top: 0 !important; left: 0 !important; width: 100vw !important; height: calc(100vh - 80px) !important; border-radius: 0; }
+</style>
+</head>
+<body>
+
+<div id="desktop" class="desktop"></div>
+
+<div class="taskbar">
+  <div class="icon-btn" onclick="openWin('win-fm')">📁</div>
+  <div class="icon-btn" onclick="openWin('win-note')">📝</div>
+  <div class="icon-btn" onclick="openWin('win-settings')">⚙️</div>
+</div>
+
+<div id="win-fm" class="window" style="width:500px; height:380px;">
+  <div class="win-header">
+    <div class="win-title">Проводник</div>
+    <div class="central-controls">
+      <button class="ctrl-btn btn-min" onclick="hideWin('win-fm')">—</button>
+      <button class="ctrl-btn btn-close" onclick="closeWin('win-fm')">✕</button>
+      <button class="ctrl-btn btn-max" onclick="maximizeWin('win-fm')">▢</button>
+    </div>
+  </div>
+  <div class="win-content">
+    <div style="padding: 10px; display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <button class="btn" onclick="document.getElementById('installInput').click()">📥 Установить .js</button>
+    </div>
+    <div id="fm-list" class="file-grid"></div>
+    <input type="file" id="installInput" hidden accept=".js" onchange="handleInstall(this)">
+    <div class="resizer"></div>
+  </div>
+</div>
+
+<div id="win-note" class="window" style="width:600px; height:500px;">
+  <div class="win-header">
+    <div class="win-title">Блокнот</div>
+    <div class="central-controls">
+      <button class="ctrl-btn btn-min" onclick="hideWin('win-note')">—</button>
+      <button class="ctrl-btn btn-close" onclick="closeWin('win-note')">✕</button>
+      <button class="ctrl-btn btn-max" onclick="maximizeWin('win-note')">▢</button>
+    </div>
+  </div>
+  <div class="win-content">
+    <div class="notepad-toolbar">
+      <button class="btn" onclick="saveNote()">💾 Сохранить</button>
+      <button class="btn" style="background:var(--panel)" onclick="newNote()">📄 Новый</button>
+      <span id="currentFileName" style="font-size: 11px; opacity: 0.5; align-self: center;">Справка.txt</span>
+    </div>
+    <textarea id="noteTextarea"></textarea>
+    <div class="resizer"></div>
+  </div>
+</div>
+
+<div id="win-settings" class="window" style="width:300px; height:200px;">
+  <div class="win-header"><div class="win-title">Настройки</div><div class="central-controls"><button class="ctrl-btn btn-min" onclick="hideWin('win-settings')">—</button><button class="ctrl-btn btn-close" onclick="closeWin('win-settings')">✕</button><button class="ctrl-btn btn-max" onclick="maximizeWin('win-settings')">▢</button></div></div>
+  <div class="win-content" style="padding:20px;">
+    <button class="btn" style="width:100%; background:var(--danger)" onclick="fullReset()">Полный сброс</button>
+    <div class="resizer"></div>
+  </div>
+</div>
+
+<script>
+  let highestZ = 1000;
+  
+  const helpContent = `РУКОВОДСТВО РАЗРАБОТЧИКА WebOS
+==============================
+
+1. КАК ПИСАТЬ ПРИЛОЖЕНИЯ
+Система модульная. Вы можете написать код в .js файле и импортировать его через Проводник.
+
+Пример кода для создания иконки в таскбаре:
+------------------------------
+const btn = document.createElement('div');
+btn.className = 'icon-btn';
+btn.innerHTML = '🎮';
+btn.onclick = () => alert('Игра запущена!');
+document.querySelector('.taskbar').appendChild(btn);
+------------------------------
+
+2. СИСТЕМНЫЕ ФУНКЦИИ
+- openWin(id): открыть окно по ID.
+- closeWin(id): закрыть окно.
+- focusWin(element): вывести окно на передний план.
+
+3. СОЗДАНИЕ ОКОН
+Вы можете динамически добавлять HTML-код окна в body и инициализировать его через скрипт. 
+Используйте класс .window и .win-header для поддержки перемещения.
+
+4. СОХРАНЕНИЕ ДАННЫХ
+Используйте localStorage для сохранения состояния вашего приложения, чтобы оно не пропадало после перезагрузки.
+
+5. СОВЕТ ПО ИГРАМ
+Для создания игр используйте тег <canvas>. Вы можете развернуть окно на весь экран кнопкой (▢), чтобы получить игровое пространство.`;
+
+  let fs = JSON.parse(localStorage.getItem('os_fs')) || [
+    { name: 'Справка.txt', content: helpContent, type: 'txt' }
+  ];
+
+  function saveFs() { localStorage.setItem('os_fs', JSON.stringify(fs)); renderFiles(); }
+
+  // Notepad logic
+  let currentOpenFileName = 'Справка.txt';
+  function newNote() { document.getElementById('noteTextarea').value = ''; currentOpenFileName = null; document.getElementById('currentFileName').innerText = 'Безымянный.txt'; }
+  function saveNote() {
+    const content = document.getElementById('noteTextarea').value;
+    let name = currentOpenFileName || prompt('Имя файла:', 'doc.txt');
+    if (!name) return;
+    const file = fs.find(f => f.name === name);
+    if (file) file.content = content; else fs.push({name, content, type:'txt'});
+    currentOpenFileName = name; document.getElementById('currentFileName').innerText = name;
+    saveFs();
+  }
+
+  function renderFiles() {
+    const list = document.getElementById('fm-list'); list.innerHTML = '';
+    fs.forEach(file => {
+      const div = document.createElement('div'); div.className = 'file-item';
+      div.innerHTML = `<div style="font-size:30px">${file.type === 'txt' ? '📄' : '⚙️'}</div><div style="font-size:11px; text-align:center;">${file.name}</div>`;
+      div.onclick = () => { if(file.type === 'txt') { document.getElementById('noteTextarea').value = file.content; currentOpenFileName = file.name; document.getElementById('currentFileName').innerText = file.name; openWin('win-note'); } };
+      list.appendChild(div);
+    });
+  }
+
+  // Window Core
+  function openWin(id) {
+    const win = document.getElementById(id); win.style.display = 'flex';
+    if (!win.style.left) { win.style.left = (window.innerWidth - win.offsetWidth)/2 + "px"; win.style.top = "50px"; }
+    focusWin(win);
+  }
+  function closeWin(id) { document.getElementById(id).style.display = 'none'; }
+  function hideWin(id) { document.getElementById(id).style.display = 'none'; }
+  function maximizeWin(id) { document.getElementById(id).classList.toggle('maximized'); }
+  function focusWin(win) { win.style.zIndex = ++highestZ; }
+
+  document.querySelectorAll('.window').forEach(win => {
+    const header = win.querySelector('.win-header'), resizer = win.querySelector('.resizer');
+    const startM = (e) => {
+      if(win.classList.contains('maximized') || e.target.classList.contains('ctrl-btn')) return;
+      const t = e.touches ? e.touches[0] : e;
+      let sX = t.clientX - win.offsetLeft, sY = t.clientY - win.offsetTop;
+      const move = (me) => { const mt = me.touches ? me.touches[0] : me; win.style.left = (mt.clientX - sX) + 'px'; win.style.top = (mt.clientY - sY) + 'px'; };
+      const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('touchmove', move); };
+      document.addEventListener('mousemove', move); document.addEventListener('touchmove', move, {passive:false});
+      document.addEventListener('mouseup', stop); document.addEventListener('touchend', stop);
+    };
+    const startR = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const t = e.touches ? e.touches[0] : e;
+      let sW = win.offsetWidth, sH = win.offsetHeight, sX = t.clientX, sY = t.clientY;
+      const move = (me) => { const mt = me.touches ? me.touches[0] : me; win.style.width = (sW + (mt.clientX - sX)) + 'px'; win.style.height = (sH + (mt.clientY - sY)) + 'px'; };
+      const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('touchmove', move); };
+      document.addEventListener('mousemove', move); document.addEventListener('touchmove', move, {passive:false});
+      document.addEventListener('mouseup', stop); document.addEventListener('touchend', stop);
+    };
+    header.addEventListener('mousedown', startM); header.addEventListener('touchstart', startM, {passive:false});
+    resizer.addEventListener('mousedown', startR); resizer.addEventListener('touchstart', startR, {passive:false});
+    win.addEventListener('mousedown', () => focusWin(win));
+  });
+
+  function handleInstall(input) {
+    const f = input.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = (e) => { const s = document.createElement('script'); s.textContent = e.target.result; document.body.appendChild(s); alert('Модуль ' + f.name + ' установлен!'); };
+    r.readAsText(f);
+  }
+
+  function fullReset() { if(confirm('Сбросить систему?')) { localStorage.clear(); location.reload(); } }
+
+  window.onload = () => {
+    const savedBg = localStorage.getItem('os_bg_style');
+    if(savedBg) document.getElementById('desktop').style.background = savedBg;
+    document.getElementById('noteTextarea').value = fs[0].content;
+    renderFiles();
+  };
+</script>
+</body>
+</html>
