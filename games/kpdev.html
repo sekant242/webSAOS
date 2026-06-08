@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Кинопоиск API Explorer (без fetch)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h1 {
+            font-size: 1.8rem;
+            color: #FF5500;
+            letter-spacing: -0.5px;
+        }
+        h1 small {
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: normal;
+        }
+        .api-key-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .api-key-section input {
+            padding: 10px 16px;
+            border: 1px solid #ddd;
+            border-radius: 40px;
+            width: 260px;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+        .api-key-section input:focus {
+            border-color: #FF5500;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255,85,0,0.2);
+        }
+        button {
+            background: #FF5500;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.05s;
+            font-size: 0.9rem;
+        }
+        button:hover {
+            background: #e04e00;
+        }
+        button:active {
+            transform: scale(0.97);
+        }
+        .status {
+            font-size: 0.8rem;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: #f0f0f0;
+        }
+        .status.valid {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+        .tab-btn {
+            background: transparent;
+            color: #444;
+            border-radius: 40px;
+            padding: 8px 20px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover {
+            background: #eee;
+            color: #FF5500;
+        }
+        .tab-btn.active {
+            background: #FF5500;
+            color: white;
+        }
+
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+        .tab-pane.active-pane {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+            margin-bottom: 20px;
+        }
+        .filter-group label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #555;
+            gap: 5px;
+        }
+        .filter-group input, .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            min-width: 150px;
+        }
+        .search-btn {
+            background: #2c3e66;
+            margin-top: 0;
+            height: 38px;
+        }
+        .results-area {
+            background: #fafbfc;
+            border-radius: 20px;
+            padding: 15px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .grid-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .result-item {
+            background: #f8f9fa;
+            border-left: 5px solid #FF5500;
+            padding: 14px;
+            border-radius: 14px;
+        }
+        .result-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+        .result-detail {
+            color: #333;
+            font-size: 0.85rem;
+        }
+        pre {
+            background: #1e1e2f;
+            color: #f8f9fa;
+            padding: 14px;
+            border-radius: 14px;
+            overflow-x: auto;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎬 Kinopoisk API Explorer <small>XMLHttpRequest версия</small></h1>
+        <div class="api-key-section">
+            <input type="text" id="apiKeyInput" placeholder="X-API-KEY (токен)" autocomplete="off">
+            <button id="saveKeyBtn">Сохранить ключ</button>
+            <span id="keyStatus" class="status">🔑 не задан</span>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="movies">🎬 Фильмы</button>
+        <button class="tab-btn" data-tab="person">👤 Персоны</button>
+        <button class="tab-btn" data-tab="season">📺 Сезоны</button>
+        <button class="tab-btn" data-tab="image">🖼️ Изображения</button>
+        <button class="tab-btn" data-tab="list">📚 Коллекции</button>
+        <button class="tab-btn" data-tab="review">✍️ Отзывы</button>
+        <button class="tab-btn" data-tab="keyword">🔑 Ключевые слова</button>
+        <button class="tab-btn" data-tab="studio">🏢 Студии</button>
+    </div>
+
+    <!-- Фильмы -->
+    <div id="moviesPane" class="tab-pane active-pane">
+        <div class="card">
+            <h3>🔍 Расширенный поиск фильмов / сериалов</h3>
+            <div class="filter-group">
+                <label>Название <input type="text" id="movieName" placeholder="Интерстеллар"></label>
+                <label>Год <input type="text" id="movieYear" placeholder="2020-2024"></label>
+                <label>Рейтинг КП <input type="text" id="ratingKp" placeholder="7-10"></label>
+                <label>Жанр <input type="text" id="genre" placeholder="драма"></label>
+                <label>Тип <select id="typeSelect"><option value="">все</option><option value="1">фильм</option><option value="2">сериал</option></select></label>
+                <label>Страница <input type="number" id="moviePage" value="1" min="1"></label>
+                <button id="searchMoviesBtn" class="search-btn">🔎 Искать</button>
+            </div>
+            <div id="moviesResult" class="results-area">✨ Результаты поиска фильмов</div>
+        </div>
+        <div class="card">
+            <h3>🎯 Фильм по ID</h3>
+            <div class="filter-group"><label>ID <input type="number" id="movieIdById" placeholder="666"></label><button id="getMovieByIdBtn">Получить</button></div>
+            <div id="movieByIdResult" class="results-area"></div>
+        </div>
+    </div>
+
+    <!-- Персоны -->
+    <div id="personPane" class="tab-pane">
+        <div class="card"><h3>👤 Поиск персон</h3><div class="filter-group"><label>Имя <input type="text" id="personName" placeholder="Леонардо ДиКаприо"></label><label>Профессия <select id="profession"><option value="">все</option><option value="актер">актер</option><option value="режиссер">режиссер</option></select></label><button id="searchPersonsBtn">Поиск</button></div><div id="personsResult" class="results-area"></div></div>
+        <div class="card"><h3>🆔 Персона по ID</h3><div class="filter-group"><label>ID <input type="number" id="personId" placeholder="101010"></label><button id="getPersonByIdBtn">Показать</button></div><div id="personByIdResult" class="results-area"></div></div>
+    </div>
+
+    <!-- Сезоны -->
+    <div id="seasonPane" class="tab-pane">
+        <div class="card"><h3>📺 Сезоны по ID фильма</h3><div class="filter-group"><label>ID фильма <input type="number" id="seasonMovieId" placeholder="77044"></label><button id="getSeasonsByMovieBtn">Показать</button></div><div id="seasonsResult" class="results-area"></div></div>
+    </div>
+
+    <!-- Изображения -->
+    <div id="imagePane" class="tab-pane">
+        <div class="card"><h3>🖼️ Изображения по ID фильма</h3><div class="filter-group"><label>ID фильма <input type="number" id="imageMovieId" placeholder="666"></label><label>Тип <select id="imageType"><option value="">все</option><option value="POSTER">постер</option><option value="STILL">кадр</option></select></label><button id="searchImagesBtn">Найти</button></div><div id="imagesResult" class="results-area"></div></div>
+    </div>
+
+    <!-- Коллекции -->
+    <div id="listPane" class="tab-pane">
+        <div class="card"><h3>📚 Коллекции (топ-250 и др.)</h3><button id="getAllListsBtn">Все коллекции</button><div class="filter-group" style="margin-top:15px"><label>Slug <input type="text" id="listSlug" placeholder="top250"></label><button id="getListBySlugBtn">Показать</button></div><div id="listsResult" class="results-area"></div></div>
+    </div>
+
+    <!-- Отзывы -->
+    <div id="reviewPane" class="tab-pane">
+        <div class="card"><h3>✍️ Отзывы к фильму</h3><div class="filter-group"><label>ID фильма <input type="number" id="reviewMovieId" placeholder="666"></label><button id="getReviewsBtn">Загрузить</button></div><div id="reviewsResult" class="results-area"></div></div>
+    </div>
+
+    <!-- Ключевые слова -->
+    <div id="keywordPane" class="tab-pane">
+        <div class="card"><h3>🔑 Поиск ключевых слов</h3><div class="filter-group"><label>Слово <input type="text" id="keywordName" placeholder="киберпанк"></label><button id="searchKeywordsBtn">Искать</button></div><div id="keywordsResult" class="results-area"></div></div>
+    </div>
+
+    <!-- Студии -->
+    <div id="studioPane" class="tab-pane">
+        <div class="card"><h3>🏢 Поиск студий</h3><div class="filter-group"><label>Название <input type="text" id="studioName" placeholder="Warner Bros."></label><button id="searchStudiosBtn">Искать</button></div><div id="studiosResult" class="results-area"></div></div>
+    </div>
+    <div class="footer-note">⚡ Используется XMLHttpRequest (без fetch). Данные от kinopoisk.dev</div>
+</div>
+
+<script>
+    let API_KEY = localStorage.getItem('kp_api_key') || '';
+    const BASE_URL = 'https://api.kinopoisk.dev/v1.4';
+
+    const keyInput = document.getElementById('apiKeyInput');
+    const saveKeyBtn = document.getElementById('saveKeyBtn');
+    const keyStatusSpan = document.getElementById('keyStatus');
+
+    function updateKeyStatus() {
+        if (API_KEY) {
+            keyStatusSpan.textContent = '✅ Ключ активен';
+            keyStatusSpan.className = 'status valid';
+        } else {
+            keyStatusSpan.textContent = '⚠️ Ключ не задан';
+            keyStatusSpan.className = 'status';
+        }
+        keyInput.value = API_KEY;
+    }
+
+    saveKeyBtn.addEventListener('click', () => {
+        const newKey = keyInput.value.trim();
+        if (newKey) {
+            API_KEY = newKey;
+            localStorage.setItem('kp_api_key', API_KEY);
+            updateKeyStatus();
+        } else {
+            API_KEY = '';
+            localStorage.removeItem('kp_api_key');
+            updateKeyStatus();
+        }
+    });
+
+    // Обещание на основе XMLHttpRequest
+    function xhrRequest(url, method = 'GET') {
+        return new Promise((resolve, reject) => {
+            if (!API_KEY) {
+                reject(new Error('API ключ не задан. Получите токен у @kinopoiskdev_bot.'));
+                return;
+            }
+            const xhr = new XMLHttpRequest();
+            xhr.open(method, url, true);
+            xhr.setRequestHeader('X-API-KEY', API_KEY);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            resolve(data);
+                        } catch(e) {
+                            reject(new Error('Ошибка парсинга JSON'));
+                        }
+                    } else {
+                        let errMsg = `Ошибка ${xhr.status}: ${xhr.statusText}`;
+                        try {
+                            const errData = JSON.parse(xhr.responseText);
+                            if (errData.message) errMsg = errData.message;
+                        } catch(e) {}
+                        reject(new Error(errMsg));
+                    }
+                }
+            };
+            xhr.onerror = () => reject(new Error('Сетевая ошибка'));
+            xhr.send();
+        });
+    }
+
+    function renderJson(data, elementId) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        if (!data) {
+            el.innerHTML = '<span style="color:#999;">Нет данных</span>';
+            return;
+        }
+        let displayData = data;
+        if (data.docs !== undefined) displayData = data.docs;
+        if (Array.isArray(displayData) && displayData.length === 0) {
+            el.innerHTML = '<span>😕 Ничего не найдено</span>';
+            return;
+        }
+        if (Array.isArray(displayData)) {
+            let html = `<div class="grid-list">`;
+            displayData.slice(0, 40).forEach(item => {
+                let title = item.name || item.title || item.slug || item.id || 'Без имени';
+                html += `<div class="result-item"><div class="result-title">${escapeHtml(title)}</div><div class="result-detail"><pre style="background:#f1f1f1; color:#222;">${escapeHtml(JSON.stringify(item, null, 2).substring(0, 800))}${JSON.stringify(item, null, 2).length > 800 ? '…' : ''}</pre></div></div>`;
+            });
+            if (displayData.length > 40) html += `<div>... и ещё ${displayData.length-40} результатов.</div>`;
+            html += `</div>`;
+            el.innerHTML = html;
+        } else {
+            el.innerHTML = `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // --- API вызовы ---
+    async function searchMovies() {
+        const name = document.getElementById('movieName').value;
+        const year = document.getElementById('movieYear').value;
+        const rating = document.getElementById('ratingKp').value;
+        const genre = document.getElementById('genre').value;
+        const type = document.getElementById('typeSelect').value;
+        let page = document.getElementById('moviePage').value;
+        const params = new URLSearchParams();
+        if (page) params.append('page', page);
+        params.append('limit', '20');
+        if (name) params.append('name', name);
+        if (year) params.append('year', year);
+        if (rating) params.append('rating.kp', rating);
+        if (genre) params.append('genres.name', genre);
+        if (type) params.append('typeNumber', type);
+        try {
+            const data = await xhrRequest(`${BASE_URL}/movie?${params.toString()}`);
+            renderJson(data, 'moviesResult');
+        } catch(e) { document.getElementById('moviesResult').innerHTML = `<span style="color:red;">❌ ${e.message}</span>`; }
+    }
+    async function getMovieById() {
+        const id = document.getElementById('movieIdById').value;
+        if (!id) return;
+        try {
+            const data = await xhrRequest(`${BASE_URL}/movie/${id}`);
+            renderJson(data, 'movieByIdResult');
+        } catch(e) { document.getElementById('movieByIdResult').innerHTML = `<span style="color:red;">❌ ${e.message}</span>`; }
+    }
+    async function searchPersons() {
+        const name = document.getElementById('personName').value;
+        const prof = document.getElementById('profession').value;
+        const params = new URLSearchParams();
+        if (name) params.append('name', name);
+        if (prof) params.append('profession', prof);
+        params.append('limit', '20');
+        try {
+            const data = await xhrRequest(`${BASE_URL}/person?${params.toString()}`);
+            renderJson(data, 'personsResult');
+        } catch(e) { document.getElementById('personsResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function getPersonById() {
+        const id = document.getElementById('personId').value;
+        if (!id) return;
+        try {
+            const data = await xhrRequest(`${BASE_URL}/person/${id}`);
+            renderJson(data, 'personByIdResult');
+        } catch(e) { document.getElementById('personByIdResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function getSeasonsByMovie() {
+        const movieId = document.getElementById('seasonMovieId').value;
+        if (!movieId) return;
+        try {
+            const data = await xhrRequest(`${BASE_URL}/season?movieId=${movieId}`);
+            renderJson(data, 'seasonsResult');
+        } catch(e) { document.getElementById('seasonsResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function searchImages() {
+        const movieId = document.getElementById('imageMovieId').value;
+        const type = document.getElementById('imageType').value;
+        const params = new URLSearchParams();
+        if (movieId) params.append('movieId', movieId);
+        if (type) params.append('type', type);
+        params.append('limit', '20');
+        try {
+            const data = await xhrRequest(`${BASE_URL}/image?${params.toString()}`);
+            renderJson(data, 'imagesResult');
+        } catch(e) { document.getElementById('imagesResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function getAllLists() {
+        try {
+            const data = await xhrRequest(`${BASE_URL}/list?limit=50`);
+            renderJson(data, 'listsResult');
+        } catch(e) { document.getElementById('listsResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function getListBySlug() {
+        const slug = document.getElementById('listSlug').value;
+        if (!slug) return;
+        try {
+            const data = await xhrRequest(`${BASE_URL}/list/${slug}`);
+            renderJson(data, 'listsResult');
+        } catch(e) { document.getElementById('listsResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function getReviews() {
+        const movieId = document.getElementById('reviewMovieId').value;
+        if (!movieId) return;
+        try {
+            const data = await xhrRequest(`${BASE_URL}/review?movieId=${movieId}&limit=20`);
+            renderJson(data, 'reviewsResult');
+        } catch(e) { document.getElementById('reviewsResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function searchKeywords() {
+        const kw = document.getElementById('keywordName').value;
+        const params = new URLSearchParams();
+        if (kw) params.append('name', kw);
+        params.append('limit', '20');
+        try {
+            const data = await xhrRequest(`${BASE_URL}/keyword?${params.toString()}`);
+            renderJson(data, 'keywordsResult');
+        } catch(e) { document.getElementById('keywordsResult').innerHTML = `❌ ${e.message}`; }
+    }
+    async function searchStudios() {
+        const studio = document.getElementById('studioName').value;
+        const params = new URLSearchParams();
+        if (studio) params.append('name', studio);
+        params.append('limit', '20');
+        try {
+            const data = await xhrRequest(`${BASE_URL}/studio?${params.toString()}`);
+            renderJson(data, 'studiosResult');
+        } catch(e) { document.getElementById('studiosResult').innerHTML = `❌ ${e.message}`; }
+    }
+
+    // Вкладки
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panes = {
+        movies: document.getElementById('moviesPane'),
+        person: document.getElementById('personPane'),
+        season: document.getElementById('seasonPane'),
+        image: document.getElementById('imagePane'),
+        list: document.getElementById('listPane'),
+        review: document.getElementById('reviewPane'),
+        keyword: document.getElementById('keywordPane'),
+        studio: document.getElementById('studioPane')
+    };
+    tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.dataset.tab;
+            tabs.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            Object.values(panes).forEach(pane => pane.classList.remove('active-pane'));
+            if (panes[tabId]) panes[tabId].classList.add('active-pane');
+        });
+    });
+
+    // Кнопки
+    document.getElementById('searchMoviesBtn').addEventListener('click', searchMovies);
+    document.getElementById('getMovieByIdBtn').addEventListener('click', getMovieById);
+    document.getElementById('searchPersonsBtn').addEventListener('click', searchPersons);
+    document.getElementById('getPersonByIdBtn').addEventListener('click', getPersonById);
+    document.getElementById('getSeasonsByMovieBtn').addEventListener('click', getSeasonsByMovie);
+    document.getElementById('searchImagesBtn').addEventListener('click', searchImages);
+    document.getElementById('getAllListsBtn').addEventListener('click', getAllLists);
+    document.getElementById('getListBySlugBtn').addEventListener('click', getListBySlug);
+    document.getElementById('getReviewsBtn').addEventListener('click', getReviews);
+    document.getElementById('searchKeywordsBtn').addEventListener('click', searchKeywords);
+    document.getElementById('searchStudiosBtn').addEventListener('click', searchStudios);
+
+    updateKeyStatus();
+</script>
+</body>
+</html>
