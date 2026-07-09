@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a84ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
 <title>Змейка</title>
 <style>
 :root {
@@ -197,33 +198,12 @@ canvas { border: 3px solid var(--fg); background: var(--bg); image-rendering: pi
 </div>
 
 <script>
-// ================= PWA MANIFEST =================
-(function() {
-    const manifest = {
-        name: "Змейка",
-        short_name: "Змейка",
-        start_url: ".",
-        display: "standalone",
-        background_color: "#1c1c1e",
-        theme_color: "#0a84ff",
-        icons: [
-            {
-                src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Ctext y='140' font-size='140' text-anchor='middle'%3E🐍%3C/text%3E%3C/svg%3E",
-                sizes: "192x192",
-                type: "image/svg+xml"
-            },
-            {
-                src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ctext y='370' font-size='370' text-anchor='middle'%3E🐍%3C/text%3E%3C/svg%3E",
-                sizes: "512x512",
-                type: "image/svg+xml"
-            }
-        ]
-    };
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(manifest));
-    document.head.appendChild(link);
-})();
+// ================= SERVICE WORKER =================
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('SW registered'))
+        .catch(() => console.log('SW registration failed'));
+}
 
 // ================= STATE & CONFIG =================
 const state = {
@@ -313,7 +293,12 @@ function toggleSetting(key) {
     if(key==='music') state.music?startMusic():stopMusic();
     saveState();
 }
-function setTheme(t) { state.theme=t; document.body.dataset.theme=t; updateStyleCache(); saveState(); }
+function setTheme(t) { 
+    state.theme=t; 
+    document.body.dataset.theme=t; 
+    updateStyleCache(); 
+    saveState(); 
+}
 function setSize(s) { state.size=s; gridCount=sizes[s]; saveState(); }
 function setControl(c) { state.control=c; saveState(); setupControlsUI(); }
 function saveState() { localStorage.setItem('snakeState', JSON.stringify(state)); }
@@ -397,7 +382,6 @@ function togglePause() {
         const scores=getHighscores();
         const modeKey=getModeKey(game);
         const record=scores[modeKey]||0;
-        // В режиме Дзен не показываем рекорд
         if (game.mods.zen) {
             document.getElementById('pauseHighscores').innerHTML = '<i>Дзен-режим, очки не считаются</i>';
         } else {
@@ -418,6 +402,7 @@ function togglePause() {
 }
 
 function startGame(mode) {
+    if (gameLoopId) { cancelAnimationFrame(gameLoopId); gameLoopId = null; }
     const mods={};
     if(mode==='classic') mods.classic=true;
     else if(mode==='time') mods.time=true;
@@ -431,6 +416,7 @@ function startGame(mode) {
     initGame(mode, mods);
 }
 function startConstructor() {
+    if (gameLoopId) { cancelAnimationFrame(gameLoopId); gameLoopId = null; }
     const mods={};
     document.querySelectorAll('.cons-btn.active').forEach(b=>mods[b.dataset.mod]=true);
     if(Object.keys(mods).length<2){ alert('Выберите минимум 2 модификатора!'); return; }
@@ -476,10 +462,10 @@ function initGame(mode, mods) {
         shieldActive:false,
         invisibleActive:false, invisibleTimer:0,
         magnetActive:false, magnetTimer:0,
-        slowActive:false, slowTimer:0
+        slowActive:false, slowTimer:0,
+        bonusTimeout: null
     };
 
-    // Скрываем очки и рекорд в режиме Дзен
     if (game.mods.zen) {
         document.getElementById('scoreDisplay').style.display = 'none';
         document.getElementById('highscoreDisplay').style.display = 'none';
@@ -554,6 +540,7 @@ function generateQueueFoods() {
     game.queueIndex=0;
 }
 function regenerateQueueFoods() {
+    if (!game.foods) game.foods = [];
     game.foods = [];
     const count=10;
     for(let i=0;i<count;i++) {
@@ -594,8 +581,8 @@ function spawnBonus() {
         const types=['grow2','shrink','slow','fast','reverse','shield','invisible','magnet','slowtime'];
         const type=types[Math.floor(Math.random()*types.length)];
         game.bonus={x,y,type};
-        const desc={grow2:'+2 сегмента',shrink:'Уменьшение',slow:'Замедление',fast:'Ускорение',reverse:'Реверс',shield:'Щит',invisible:'Невидимость',magnet:'Магнит',slowtime:'Замедление времени'};
-        document.getElementById('bonusHint').innerText='⭐ '+desc[type];
+        const icons={grow2:'+2 сегмента',shrink:'Уменьшение',slow:'Замедление',fast:'Ускорение',reverse:'Реверс',shield:'Щит',invisible:'Невидимость',magnet:'Магнит',slowtime:'Замедление времени'};
+        document.getElementById('bonusHint').innerText='⭐ '+icons[type];
         setTimeout(()=>{ if(!game.gameOver) document.getElementById('bonusHint').innerText=''; },2000);
     }
     bonusTimeoutId2=setTimeout(spawnBonus,5000);
@@ -603,10 +590,32 @@ function spawnBonus() {
 
 function applyBonus(type) {
     switch(type) {
-        case 'grow2': { const last=game.snake[game.snake.length-1]; game.snake.push({...last},{...last}); break; }
-        case 'shrink': game.snake=game.snake.slice(0,3); break;
-        case 'slow': game.speed=Math.min(500,game.speed+100); setTimeout(()=>{ if(!game.gameOver) game.speed=game.baseSpeed; },5000); break;
-        case 'fast': game.speed=Math.max(50,game.speed-100); setTimeout(()=>{ if(!game.gameOver) game.speed=game.baseSpeed; },5000); break;
+        case 'grow2': { 
+            const last=game.snake[game.snake.length-1]; 
+            game.snake.push({...last},{...last}); 
+            break; 
+        }
+        case 'shrink': 
+            if (game.snake.length > 3) {
+                game.snake = game.snake.slice(0, 3);
+            }
+            break;
+        case 'slow': 
+            if (game.bonusTimeout) clearTimeout(game.bonusTimeout);
+            game.speed = Math.min(500, game.speed + 100);
+            game.bonusTimeout = setTimeout(() => { 
+                if (!game.gameOver) game.speed = game.baseSpeed; 
+                game.bonusTimeout = null;
+            }, 5000); 
+            break;
+        case 'fast': 
+            if (game.bonusTimeout) clearTimeout(game.bonusTimeout);
+            game.speed = Math.max(50, game.speed - 100);
+            game.bonusTimeout = setTimeout(() => { 
+                if (!game.gameOver) game.speed = game.baseSpeed; 
+                game.bonusTimeout = null;
+            }, 5000); 
+            break;
         case 'reverse': game.reverseActive=true; game.reverseTimer=5000; break;
         case 'shield': game.shieldActive=true; break;
         case 'invisible': game.invisibleActive=true; game.invisibleTimer=5000; break;
@@ -740,7 +749,6 @@ function updateGame() {
     let shouldGrow=true;
     let bonusAte=false;
 
-    // Проверка на поедание
     if(game.mods.queue) {
         if(game.queueIndex < game.foods.length && head.x===game.foods[game.queueIndex].x && head.y===game.foods[game.queueIndex].y) {
             ate=true;
@@ -766,19 +774,23 @@ function updateGame() {
             ate=true;
             if (!game.mods.zen) game.score += 10;
             game.foodEaten++;
-            if(game.foodEaten%10===0) game.speed=Math.max(80,game.speed-20);
+            if(game.foodEaten%10===0) {
+                game.speed = Math.max(80, game.speed - 20);
+                game.baseSpeed = game.speed;
+            }
             spawnFood();
         }
     }
 
-    // Бонусы
     if(game.mods.bonuses && game.bonus && head.x===game.bonus.x && head.y===game.bonus.y) {
         ate=true; bonusAte=true;
         if (!game.mods.zen) game.score += 20;
-        applyBonus(game.bonus.type);
+        const bonusType = game.bonus.type;
+        applyBonus(bonusType);
+        const icons = {grow2:'+2',shrink:'Уменьшение',slow:'Замедление',fast:'Ускорение',reverse:'Реверс',shield:'Щит',invisible:'Невидимость',magnet:'Магнит',slowtime:'Замедление'};
         game.bonus=null;
         soundBonus();
-        document.getElementById('bonusHint').innerText='✅ '+ ( {grow2:'+2',shrink:'Уменьшение',slow:'Замедление',fast:'Ускорение',reverse:'Реверс',shield:'Щит',invisible:'Невидимость',magnet:'Магнит',slowtime:'Замедление'}[game.bonus?.type]||'');
+        document.getElementById('bonusHint').innerText='✅ ' + (icons[bonusType] || '');
         setTimeout(()=>{ if(!game.gameOver) document.getElementById('bonusHint').innerText=''; },2000);
     }
 
@@ -936,7 +948,6 @@ function endGame(win=false, title=null) {
     if(bonusTimeoutId2){ clearTimeout(bonusTimeoutId2); bonusTimeoutId2=null; }
     stopMusic();
 
-    // В режиме Дзен не сохраняем рекорд и не показываем очки
     if (!game.mods.zen) {
         const modeKey=getModeKey(game);
         let finalScore=game.score;
@@ -960,6 +971,7 @@ function endGame(win=false, title=null) {
 }
 
 function restartGame() {
+    if (gameLoopId) { cancelAnimationFrame(gameLoopId); gameLoopId = null; }
     hideModal('gameOverModal');
     hideModal('pauseModal');
     if(game.mode==='constructor') startConstructor();
