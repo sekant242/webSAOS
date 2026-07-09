@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a84ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Змейка | Ultra Edition</title>
+<title>Змейка</title>
 <style>
 :root {
     --bg: #ffffff; --fg: #000000; --accent: #007aff; --grid: rgba(0,0,0,0.05);
@@ -66,7 +66,7 @@ canvas { border: 3px solid var(--fg); background: var(--bg); image-rendering: pi
 
 <!-- MENU -->
 <div id="menuScreen" class="screen active">
-    <h1>🐍 ЗМЕЙКА ULTRA</h1>
+    <h1>ЗМЕЙКА</h1>
     <button class="btn" onclick="showScreen('modeScreen')">ИГРАТЬ</button>
     <button class="btn" onclick="showScreen('settingsScreen')">НАСТРОЙКИ</button>
     <button class="btn danger" onclick="if(confirm('Выйти?')) window.close()">ВЫХОД</button>
@@ -200,7 +200,7 @@ canvas { border: 3px solid var(--fg); background: var(--bg); image-rendering: pi
 // ================= PWA MANIFEST =================
 (function() {
     const manifest = {
-        name: "Змейка Ultra",
+        name: "Змейка",
         short_name: "Змейка",
         start_url: ".",
         display: "standalone",
