@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#0a84ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json">
 <title>Змейка</title>
 <style>
 :root {
@@ -198,12 +197,33 @@ canvas { border: 3px solid var(--fg); background: var(--bg); image-rendering: pi
 </div>
 
 <script>
-// ================= SERVICE WORKER =================
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-        .then(() => console.log('SW registered'))
-        .catch(() => console.log('SW registration failed'));
-}
+// ================= PWA MANIFEST (встроенный) =================
+(function() {
+    const manifest = {
+        name: "Змейка",
+        short_name: "Змейка",
+        start_url: "snake.html",
+        display: "standalone",
+        background_color: "#1c1c1e",
+        theme_color: "#0a84ff",
+        icons: [
+            {
+                src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Ctext y='140' font-size='140' text-anchor='middle'%3E🐍%3C/text%3E%3C/svg%3E",
+                sizes: "192x192",
+                type: "image/svg+xml"
+            },
+            {
+                src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ctext y='370' font-size='370' text-anchor='middle'%3E🐍%3C/text%3E%3C/svg%3E",
+                sizes: "512x512",
+                type: "image/svg+xml"
+            }
+        ]
+    };
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(manifest));
+    document.head.appendChild(link);
+})();
 
 // ================= STATE & CONFIG =================
 const state = {
