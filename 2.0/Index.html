@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WebSAOS 2.0 | Modular Edition</title>
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+/* ===== БАЗОВЫЕ СТИЛИ ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+:root {
+    --accent: #2b8cff;
+    --win-bg-rgb: 22, 31, 41;
+    --text: #e6eef8;
+    --win-border: #444444;
+    --win-opacity: 0.85;
+    --glass-blur: 15px;
+    --blur: 0px;
+    --shadow-op: 0.5;
+    --win-radius: 16px 16px 16px 16px;
+    --btn-radius: 10px 10px 10px 10px;
+    --menu-radius: 16px 16px 16px 16px;
+    --icon-size: 54px;
+    --text-size: 11px;
+    --ww-bg: rgba(22, 31, 41, 0.8);
+    --ww-border: #444444;
+    --danger: #e74c3c;
+}
+html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; color: var(--text); }
+body {
+    background: #0a0e27;
+    position: relative;
+}
+
+/* ===== ЭКРАН ВХОДА ===== */
+#login-screen {
+    position: fixed; inset: 0; z-index: 99999;
+    background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; padding: 20px;
+}
+#login-screen h1 {
+    font-size: 32px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#users-grid {
+    display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;
+    max-width: 600px;
+}
+.user-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 15px 20px;
+    cursor: pointer; text-align: center;
+    transition: all 0.2s;
+}
+.user-card:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+.user-icon { font-size: 40px; margin-bottom: 5px; }
+.user-name { font-size: 13px; opacity: 0.9; }
+#new-user-form {
+    display: none;
+    background: rgba(22, 31, 41, 0.9);
+    border: 1px solid var(--win-border);
+    border-radius: 12px; padding: 15px;
+    display: none; flex-direction: column; gap: 8px;
+    width: 280px;
+}
+#new-user-form input {
+    padding: 8px; background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px; color: var(--text);
+}
+
+/* ===== РАБОЧИЙ СТОЛ ===== */
+#desktop {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    filter: blur(var(--blur));
+}
+#desktop-icons {
+    position: absolute; inset: 0;
+    padding: 20px;
+}
+.desk-icon {
+    position: absolute;
+    width: var(--icon-size);
+    text-align: center;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+.desk-icon:hover { background: rgba(255,255,255,0.1); }
+.desk-icon.dragging { opacity: 0.7; z-index: 9999; }
+.desk-icon-img {
+    font-size: 32px;
+    width: var(--icon-size); height: var(--icon-size);
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    margin-bottom: 4px;
+}
+.desk-icon-text {
+    font-size: var(--text-size);
+    color: var(--text);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    word-wrap: break-word;
+}
+
+/* ===== ПАНЕЛЬ ЗАДАЧ ===== */
+#taskbar-container {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 48px;
+    background: rgba(var(--win-bg-rgb), var(--win-opacity));
+    backdrop-filter: blur(var(--glass-blur));
+    border-top: 1px solid var(--win-border);
+    display: flex; align-items: center;
+    padding: 0 10px; gap: 10px;
+    z-index: 1000;
+}
+body[data-taskbar-pos="vertical"] #taskbar-container {
+    bottom: auto; left: 0; top: 0;
+    width: 60px; height: 100vh;
+    flex-direction: column;
+    border-top: none; border-right: 1px solid var(--win-border);
+}
+#burger-btn {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    color: white; border: none; border-radius: 8px;
+    font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+#cc-toggle {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid var(--win-border);
+    border-radius: 8px; color: var(--text);
+    cursor: pointer; font-size: 16px;
+}
+
+/* ===== ГЛАВНОЕ МЕНЮ ===== */
+#main-menu {
+    position: fixed;
+    bottom: 58px; left: 10px;
+    width: 320px; max-height: 70vh;
+    background: rgba(var(--win-bg-rgb), var(--win-opacity));
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--win-border);
+    border-radius: var(--menu-radius);
+    padding: 10px;
+    display: none; flex-direction: column; gap: 5px;
+    overflow-y: auto;
+    z-index: 9999;
+    box-shadow: 0 8px 32px rgba(0,0,0,var(--shadow-op));
+}
+#main-menu.active { display: flex; animation: menuIn 0.2s; }
+@keyframes menuIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.menu-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    transition: background 0.15s;
+    font-size: 13px;
+}
+.menu-item:hover { background: rgba(255,255,255,0.1); }
+.menu-separator { height: 1px; background: rgba(255,255,255,0.1); margin: 5px 0; }
+
+/* ===== ОКНА ===== */
+.window {
+    position: absolute;
+    background: rgba(var(--win-bg-rgb), var(--win-opacity));
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--win-border);
+    border-radius: var(--win-radius);
+    display: none; flex-direction: column;
+    min-width: 250px; min-height: 150px;
+    box-shadow: 0 8px 32px rgba(0,0,0,var(--shadow-op));
+    overflow: hidden;
+}
+.window.fullscreen { border-radius: 0 !important; }
+.win-header {
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--win-border);
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: move;
+    font-size: 13px; font-weight: 500;
+}
+body[data-ctrl-pos="left"] .win-header { flex-direction: row-reverse; }
+.win-controls { display: flex; gap: 5px; }
+body[data-ctrl-pos="left"] .win-controls { flex-direction: row-reverse; }
+.ctrl-btn {
+    width: 24px; height: 24px;
+    border: none; border-radius: 6px;
+    background: rgba(255,255,255,0.1);
+    color: var(--text); cursor: pointer;
+    font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+}
+.ctrl-btn:hover { background: rgba(255,255,255,0.2); }
+.win-content {
+    flex: 1; overflow: auto;
+    padding: 12px;
+    color: var(--text);
+}
+.resize-handle {
+    position: absolute;
+    right: 0; bottom: 0;
+    width: 15px; height: 15px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+    opacity: 0.5;
+}
+
+/* ===== АНИМАЦИИ ОКОН ===== */
+.anim-fade { animation: fadeIn 0.25s; }
+.anim-zoom { animation: zoomIn 0.25s; }
+.anim-slide { animation: slideUp 0.25s; }
+.anim-flip { animation: flip3d 0.35s; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoomIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+@keyframes flip3d { from { opacity: 0; transform: perspective(600px) rotateX(40deg); } to { opacity: 1; transform: none; } }
+
+/* ===== ВИДЖЕТЫ ===== */
+#clock-widget {
+    position: absolute;
+    top: 100px; left: 100px;
+    background: rgba(var(--win-bg-rgb), 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--win-border);
+    border-radius: 12px;
+    padding: 10px 15px;
+    cursor: move;
+    z-index: 50;
+    display: none;
+    flex-direction: column; align-items: center;
+}
+#clock-time { font-size: 28px; font-weight: 300; }
+#clock-date { font-size: 11px; opacity: 0.7; }
+
+#windows-widget {
+    position: absolute;
+    top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--ww-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--ww-border);
+    border-radius: 14px;
+    padding: 6px 10px;
+    display: none;
+    align-items: center; gap: 6px;
+    z-index: 50;
+    max-width: 90vw;
+}
+.ww-drag-handle {
+    width: 20px; height: 20px;
+    cursor: move; opacity: 0.5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+}
+#ww-icons-container { display: flex; gap: 6px; }
+.ww-icon {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    position: relative;
+    transition: all 0.15s;
+}
+.ww-icon:hover { background: rgba(255,255,255,0.15); }
+.ww-icon.minimized { opacity: 0.5; }
+.ww-indicator {
+    position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--accent);
+}
+
+#storage-widget {
+    position: absolute;
+    top: 20px; right: 20px;
+    width: 60px; height: 60px;
+    cursor: pointer;
+    z-index: 50;
+    display: none;
+    align-items: center; justify-content: center;
+}
+#storage-widget svg { width: 100%; height: 100%; }
+#storage-text {
+    position: absolute;
+    font-size: 11px; font-weight: 600;
+}
+
+/* ===== ЦЕНТР УПРАВЛЕНИЯ ===== */
+#control-center {
+    position: fixed;
+    right: 20px; bottom: 90px;
+    width: 340px; max-height: 80vh;
+    background: rgba(var(--win-bg-rgb), 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--win-border);
+    border-radius: 16px;
+    padding: 0;
+    display: none; flex-direction: column;
+    z-index: 99999;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+#control-center.cc-closing { animation: ccOut 0.3s forwards; }
+@keyframes ccOut { to { opacity: 0; transform: translateY(20px); } }
+.cc-header {
+    padding: 12px 15px;
+    background: rgba(0,0,0,0.3);
+    cursor: move;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; font-weight: 600;
+}
+.cc-body {
+    padding: 15px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 15px;
+}
+.cc-section {
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+    padding: 12px;
+}
+.cc-section h3 {
+    font-size: 12px; opacity: 0.7;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.cc-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+.cc-row:last-child { margin-bottom: 0; }
+.cc-row label { flex: 1; opacity: 0.8; }
+.cc-row input[type="color"] {
+    width: 30px; height: 30px;
+    border: none; background: none;
+    cursor: pointer;
+}
+.cc-row input[type="range"] { flex: 1; }
+.cc-row select {
+    flex: 1; padding: 5px 8px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--win-border);
+    border-radius: 6px;
+    color: var(--text); font-size: 12px;
+}
+
+/* ===== КОНТЕКСТНЫЕ МЕНЮ ===== */
+.context-menu {
+    position: fixed;
+    background: rgba(var(--win-bg-rgb), 0.95);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--win-border);
+    border-radius: var(--menu-radius);
+    padding: 5px;
+    display: none; flex-direction: column;
+    min-width: 180px;
+    z-index: 999999;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.cm-item {
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+.cm-item:hover { background: rgba(255,255,255,0.1); }
+
+/* ===== TOAST УВЕДОМЛЕНИЯ ===== */
+#toast-container {
+    position: fixed;
+    top: 20px; right: 20px;
+    z-index: 9999999;
+    display: flex; flex-direction: column; gap: 10px;
+    pointer-events: none;
+}
+.toast {
+    background: rgba(var(--win-bg-rgb), 0.95);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--win-border);
+    border-radius: 10px;
+    padding: 10px 15px;
+    color: var(--text);
+    font-size: 13px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    animation: toastIn 0.3s;
+    pointer-events: auto;
+}
+.toast.success { border-left: 3px solid #2ecc71; }
+.toast.error { border-left: 3px solid #e74c3c; }
+.toast.info { border-left: 3px solid #3498db; }
+.toast.hide { animation: toastOut 0.3s forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+
+/* ===== SNAP HIGHLIGHT ===== */
+#snap-highlight {
+    position: fixed;
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    display: none;
+    pointer-events: none;
+    z-index: 9998;
+    transition: all 0.15s;
+}
+
+/* ===== КНОПКИ И ИНПУТЫ ===== */
+.btn {
+    padding: 8px 15px;
+    background: var(--accent);
+    color: white; border: none;
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+}
+.btn:hover { filter: brightness(1.1); }
+input[type="text"], input[type="password"], textarea, select {
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--win-border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+}
+input:focus, textarea:focus { border-color: var(--accent); }
+
+/* ===== СПЕЦИФИЧНЫЕ ОКНА ===== */
+#win-terminal .win-content {
+    background: #000;
+    font-family: 'Consolas', monospace;
+    padding: 10px;
+    color: #0f0;
+}
+#term-output {
+    height: calc(100% - 40px);
+    overflow-y: auto;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+.term-line { margin-bottom: 3px; }
+#term-input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid #0f0;
+    color: #0f0;
+    font-family: inherit;
+}
+
+#win-file-manager .win-content { padding: 0; display: flex; flex-direction: column; }
+.fm-tabs {
+    display: flex;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--win-border);
+}
+.fm-tab {
+    flex: 1; padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 12px;
+    border-bottom: 2px solid transparent;
+}
+.fm-tab.active { border-bottom-color: var(--accent); background: rgba(255,255,255,0.05); }
+#fm-controls {
+    padding: 8px;
+    display: flex; gap: 5px; flex-wrap: wrap;
+    background: rgba(0,0,0,0.1);
+    border-bottom: 1px solid var(--win-border);
+}
+#fm-grid {
+    flex: 1; overflow-y: auto;
+    padding: 10px;
+    display: flex; flex-wrap: wrap; gap: 10px;
+    align-content: flex-start;
+}
+
+#win-notepad textarea {
+    width: 100%; height: calc(100% - 60px);
+    resize: none;
+    font-family: 'Consolas', monospace;
+    background: rgba(0,0,0,0.3);
+    color: var(--text);
+    border: 1px solid var(--win-border);
+    border-radius: 6px;
+    padding: 10px;
+}
+
+#win-app-manager .list-item,
+#win-app-editor { padding: 10px; }
+.list-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px; margin-bottom: 5px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+}
+#edit-code {
+    width: 100%; height: 300px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    background: rgba(0,0,0,0.4);
+    color: #0f0;
+    border: 1px solid var(--win-border);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+/* ===== ТЕМА-КЛАССЫ ===== */
+body.theme-retro { font-family: 'MS Sans Serif', sans-serif; }
+body.theme-classic { font-family: 'Tahoma', sans-serif; }
+body.theme-winxp { font-family: 'Tahoma', sans-serif; }
+body.theme-aero { font-family: 'Segoe UI', sans-serif; }
+body.theme-mica { font-family: 'Segoe UI Variable', sans-serif; }
+body.theme-macos { font-family: '-apple-system', sans-serif; }
+body.theme-msdos { font-family: 'Consolas', monospace; }
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 600px) {
+    #main-menu { width: calc(100vw - 20px); left: 10px; }
+    #control-center { width: calc(100vw - 20px); right: 10px; }
+    .desk-icon { width: 60px; }
+    .desk-icon-img { width: 60px; height: 60px; font-size: 36px; }
+}
+</style>
+</head>
+<body data-ctrl-pos="right" data-taskbar-pos="horizontal">
+
+<!-- ===== ЭКРАН ВХОДА ===== -->
+<div id="login-screen">
+    <h1>💻 WebSAOS 2.0</h1>
+    <p style="opacity:0.7; font-size:13px;">Выберите профиль</p>
+    <div id="users-grid"></div>
+    <button class="btn" onclick="toggleNewUserForm()">+ Создать пользователя</button>
+    <div id="new-user-form">
+        <input type="text" id="new-u-name" placeholder="Имя пользователя">
+        <input type="text" id="new-u-icon" placeholder="Иконка (эмодзи)" value="👤">
+        <input type="password" id="new-u-pass" placeholder="Пароль (опционально)">
+        <button class="btn" onclick="createNewUser()">Создать</button>
+    </div>
+</div>
+
+<!-- ===== РАБОЧИЙ СТОЛ ===== -->
+<div id="desktop">
+    <div id="desktop-icons"></div>
+</div>
+
+<!-- ===== ВИДЖЕТЫ ===== -->
+<div id="clock-widget">
+    <div id="clock-time">00:00</div>
+    <div id="clock-date">01.01.2026</div>
+</div>
+
+<div id="windows-widget">
+    <div class="ww-drag-handle">⋮⋮</div>
+    <div id="ww-icons-container"></div>
+</div>
+
+<div id="storage-widget" onclick="showStorageInfo()">
+    <svg viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+        <circle id="storage-circle" cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="0, 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+    </svg>
+    <div id="storage-text">0%</div>
+</div>
+
+<!-- ===== ПАНЕЛЬ ЗАДАЧ ===== -->
+<div id="taskbar-container">
+    <button id="burger-btn" onclick="toggleMenu(event)">⊞</button>
+    <button id="cc-toggle" onclick="toggleControlCenter(event)">⚙</button>
+</div>
+
+<!-- ===== ГЛАВНОЕ МЕНЮ ===== -->
+<div id="main-menu">
+    <div class="menu-item" onclick="createNewFolder()">📁 Создать папку</div>
+    <div class="menu-item" onclick="createUrlShortcut()">🌐 Создать ярлык (URL)</div>
+    <div class="menu-separator"></div>
+    <div class="menu-item" onclick="openWin('win-terminal')">🔲 Терминал</div>
+    <div class="menu-item" onclick="openWin('win-file-manager')">📁 Файловый менеджер</div>
+    <div class="menu-item" onclick="openWin('win-app-manager')">📦 Менеджер приложений</div>
+    <div class="menu-item" onclick="openWin('win-settings')">⚙️ Настройки системы</div>
+    <div class="menu-separator"></div>
+    <div class="menu-item" onclick="document.documentElement.requestFullscreen()">🖥 На весь экран</div>
+    <div class="menu-item" onclick="logout()">🚪 Выйти</div>
+</div>
+
+<!-- ===== ЦЕНТР УПРАВЛЕНИЯ ===== -->
+<div id="control-center">
+    <div class="cc-header">
+        <span>🎛 Кастомизация интерфейса</span>
+        <button class="ctrl-btn" onclick="toggleControlCenter()">✕</button>
+    </div>
+    <div class="cc-body">
+        <!-- Темы -->
+        <div class="cc-section">
+            <h3>🎨 Темы оформления</h3>
+            <div class="cc-row">
+                <label>Пресет:</label>
+                <select id="sel-theme" onchange="applyThemePreset(this.value)">
+                    <option value="">-- Индивидуальная настройка --</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Окна -->
+        <div class="cc-section">
+            <h3>🪟 Окна и Виджеты</h3>
+            <div class="cc-row">
+                <label>Прилипание к краям:</label>
+                <input type="checkbox" id="cc-snap-windows" checked onchange="updateSnapping()">
+            </div>
+            <div class="cc-row">
+                <label>Кнопки управления:</label>
+                <select id="sel-win-ctrl-pos" onchange="changeWinCtrlPos(this.value)">
+                    <option value="right">Справа (Windows)</option>
+                    <option value="left">Слева (macOS)</option>
+                </select>
+            </div>
+            <div class="cc-row">
+                <label>Панель задач:</label>
+                <select id="sel-taskbar-pos" onchange="changeTaskbarPos(this.value)">
+                    <option value="horizontal">Горизонтально</option>
+                    <option value="vertical">Вертикально</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Стиль -->
+        <div class="cc-section">
+            <h3>✨ Общий стиль</h3>
+            <div class="cc-row">
+                <label>Светлая тема:</label>
+                <input type="checkbox" id="cc-theme-mode" onchange="toggleLightMode(this.checked)">
+            </div>
+            <div class="cc-row">
+                <label>Акцентный цвет:</label>
+                <input type="color" id="cc-accent" value="#2b8cff" onchange="changeCssVar('--accent', this.value)">
+            </div>
+            <div class="cc-row">
+                <label>Цвет рамок:</label>
+                <input type="color" id="cc-border" value="#444444" onchange="changeCssVar('--win-border', this.value)">
+            </div>
+            <div class="cc-row">
+                <label>Глубина теней:</label>
+                <input type="range" id="cc-shadow" min="0" max="1" step="0.05" value="0.5" oninput="changeCssVar('--shadow-op', this.value, 'lbl-shd')">
+                <span id="lbl-shd">0.5</span>
+            </div>
+        </div>
+
+        <!-- Стекло -->
+        <div class="cc-section">
+            <h3>🌫 Стекло и Фон</h3>
+            <div class="cc-row">
+                <label>Прозрачность:</label>
+                <input type="range" id="cc-opacity" min="0.3" max="1" step="0.05" value="0.85" oninput="changeCssVar('--win-opacity', this.value, 'lbl-op')">
+                <span id="lbl-op">0.85</span>
+            </div>
+            <div class="cc-row">
+                <label>Размытие стекла:</label>
+                <input type="range" id="cc-glass" min="0" max="40" step="1" value="15" oninput="changeCssVar('--glass-blur', this.value+'px', 'lbl-gbl')">
+                <span id="lbl-gbl">15px</span>
+            </div>
+            <div class="cc-row">
+                <label>Размытие обоев:</label>
+                <input type="range" id="cc-bg-blur" min="0" max="30" step="1" value="0" oninput="changeCssVar('--blur', this.value+'px', 'lbl-bl')">
+                <span id="lbl-bl">0px</span>
+            </div>
+        </div>
+
+        <!-- Анимации -->
+        <div class="cc-section">
+            <h3>🎬 Анимации</h3>
+            <div class="cc-row">
+                <label>При открытии:</label>
+                <select id="sel-anim-open" onchange="changeAnim('open', this.value)">
+                    <option value="anim-fade">Плавное появление</option>
+                    <option value="anim-zoom">Увеличение</option>
+                    <option value="anim-slide">Выезд снизу</option>
+                    <option value="anim-flip">Вращение 3D</option>
+                </select>
+            </div>
+            <div class="cc-row">
+                <label>При перемещении:</label>
+                <select id="sel-anim-move" onchange="changeAnim('move', this.value)">
+                    <option value="move-none">Стандартно</option>
+                    <option value="move-tilt">Наклон</option>
+                    <option value="move-cloth">Ткань</option>
+                    <option value="move-scale">Уменьшение</option>
+                    <option value="move-ghost">Прозрачность</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Радиусы -->
+        <div class="cc-section">
+            <h3>🔲 Закругление углов</h3>
+            <div class="cc-row">
+                <label>Элемент:</label>
+                <select id="sel-radius-target" onchange="loadRadiiUI()">
+                    <option value="--win-radius">Окна</option>
+                    <option value="--menu-radius">Меню</option>
+                    <option value="--btn-radius">Кнопки</option>
+                </select>
+            </div>
+            <div class="cc-row" style="gap:5px;">
+                <input type="number" id="r-tl" value="16" min="0" max="50" style="width:50px;" onchange="updateRadii()">
+                <input type="number" id="r-tr" value="16" min="0" max="50" style="width:50px;" onchange="updateRadii()">
+                <input type="number" id="r-br" value="16" min="0" max="50" style="width:50px;" onchange="updateRadii()">
+                <input type="number" id="r-bl" value="16" min="0" max="50" style="width:50px;" onchange="updateRadii()">
+            </div>
+        </div>
+
+        <!-- Виджеты -->
+        <div class="cc-section">
+            <h3>📱 Настройки виджетов</h3>
+            <div class="cc-row">
+                <label>Виджет:</label>
+                <select id="sel-widget" onchange="loadWidgetSettings(this.value)">
+                    <option value="clock-widget">🕐 Часы</option>
+                    <option value="windows-widget">🪟 Dock</option>
+                    <option value="storage-widget">💾 Хранилище</option>
+                </select>
+            </div>
+            <div class="cc-row">
+                <label>Отображать:</label>
+                <input type="checkbox" id="widget-visible" onchange="updateWidgetSettings()">
+            </div>
+            <div class="cc-row">
+                <label>Поверх всех окон:</label>
+                <input type="checkbox" id="widget-top" onchange="updateWidgetSettings()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== КОНТЕКСТНЫЕ МЕНЮ ===== -->
+<div id="context-menu" class="context-menu">
+    <div class="cm-item" onclick="createNewFolder()">📁 Создать папку</div>
+    <div class="cm-item" onclick="createUrlShortcut()">🌐 Создать ярлык</div>
+    <div class="cm-item" onclick="openWin('win-settings')">⚙️ Настройки</div>
+</div>
+
+<div id="widget-context-menu" class="context-menu">
+    <div class="cm-item" id="wcm-max">🔲 Развернуть</div>
+    <div class="cm-item" id="wcm-close" style="color:var(--danger)">✕ Закрыть</div>
+</div>
+
+<div id="icon-context-menu" class="context-menu"></div>
+
+<!-- ===== SNAP HIGHLIGHT ===== -->
+<div id="snap-highlight"></div>
+
+<!-- ===== TOAST КОНТЕЙНЕР ===== -->
+<div id="toast-container"></div>
+
+<!-- ===== ОКНО МЕНЕДЖЕРА ПРИЛОЖЕНИЙ ===== -->
+<div id="win-app-manager" class="window">
+    <div class="win-header">
+        <span id="mgr-title">📦 Менеджер Приложений</span>
+        <div class="win-controls">
+            <button class="ctrl-btn" onclick="minimizeWindow('win-app-manager')">_</button>
+            <button class="ctrl-btn" onclick="maximizeWindow('win-app-manager')">□</button>
+            <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-app-manager')">✕</button>
+        </div>
+    </div>
+    <div class="win-content">
+        <div style="margin-bottom:10px; display:flex; gap:5px;">
+            <button class="btn" onclick="document.getElementById('app-upload').click()">📥 Установить приложение</button>
+            <input type="file" id="app-upload" accept=".html,.js,.txt" style="display:none;">
+        </div>
+        <div id="app-manager-list"></div>
+    </div>
+</div>
+
+<!-- ===== ОКНО РЕДАКТОРА ПРИЛОЖЕНИЙ ===== -->
+<div id="win-app-editor" class="window">
+    <div class="win-header">
+        <span>✏️ Редактор Приложения</span>
+        <div class="win-controls">
+            <button class="ctrl-btn" onclick="minimizeWindow('win-app-editor')">_</button>
+            <button class="ctrl-btn" onclick="maximizeWindow('win-app-editor')">□</button>
+            <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-app-editor')">✕</button>
+        </div>
+    </div>
+    <div class="win-content">
+        <input type="hidden" id="edit-id">
+        <input type="hidden" id="edit-owner">
+        <div style="display:flex; gap:5px; margin-bottom:8px;">
+            <input type="text" id="edit-icon" placeholder="Иконка" style="width:60px;">
+            <input type="text" id="edit-name" placeholder="Название" style="flex:1;">
+        </div>
+        <textarea id="edit-code" placeholder="Код приложения (HTML/JS)..."></textarea>
+        <button class="btn" style="margin-top:8px;" onclick="saveEditedApp()">💾 Сохранить</button>
+    </div>
+</div>
+
+<!-- ===== ОКНО НАСТРОЕК ===== -->
+<div id="win-settings" class="window">
+    <div class="win-header">
+        <span>⚙️ Настройки системы</span>
+        <div class="win-controls">
+            <button class="ctrl-btn" onclick="minimizeWindow('win-settings')">_</button>
+            <button class="ctrl-btn" onclick="maximizeWindow('win-settings')">□</button>
+            <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-settings')">✕</button>
+        </div>
+    </div>
+    <div class="win-content">
+        <button class="btn" onclick="document.getElementById('file-upload').click()" style="margin-bottom:10px;">🖼 Установить обои</button>
+        <input type="file" id="file-upload" accept="image/*" style="display:none;">
+        <br><br>
+        <button class="btn" style="background:var(--danger);" onclick="fullReset()">⚠️ Сбросить систему</button>
+    </div>
+</div>
+
+<!-- ===== ОКНО НАСТРОЕК ДОКА ===== -->
+<div id="win-ww-settings" class="window">
+    <div class="win-header">
+        <span>🎛 Настройки виджета окон</span>
+        <div class="win-controls">
+            <button class="ctrl-btn" onclick="closeWindow('win-ww-settings')">✕</button>
+        </div>
+    </div>
+    <div class="win-content">
+        <div class="cc-row"><label>Цвет фона:</label><input type="color" id="ww-set-bg" onchange="updateWWSettings()"></div>
+        <div class="cc-row"><label>Прозрачность:</label><input type="range" id="ww-set-op" min="0.3" max="1" step="0.05" onchange="updateWWSettings()"><span id="lbl-ww-op">0.8</span></div>
+        <div class="cc-row"><label>Цвет рамки:</label><input type="color" id="ww-set-border" onchange="updateWWSettings()"></div>
+        <div class="cc-row"><label>Подтверждать закрытие:</label><input type="checkbox" id="ww-set-confirm" onchange="updateWWSettings()"></div>
+    </div>
+</div>
+
+<!-- ===== ОКНО ТЕРМИНАЛА ===== -->
+<div id="win-terminal" class="window">
+    <div class="win-header">
+        <span>🔲 Терминал ОС</span>
+        <div class="win-controls">
+            <button class="ctrl-btn" onclick="minimizeWindow('win-terminal')">_</button>
+            <button class="ctrl-btn" onclick="maximizeWindow('win-terminal')">□</button>
+            <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-terminal')">✕</button>
+        </div>
+    </div>
+    <div class="win-content">
+        <div style="font-size:11px; opacity:0.7; margin-bottom:8px;">WebSAOS Terminal v2.0. Введите <b>help</b> для помощи.</div>
+        <div id="term-output"></div>
+        <input type="text" id="term-input" placeholder="root@os:~$" onkeydown="if(event.key==='Enter'){runTermCmd(this);}" autocomplete="off">
+    </div>
+</div>
+
+<!-- ===== ОКНО ФАЙЛОВОГО МЕНЕДЖЕРА ===== -->
+<div id="win-file-manager" class="window">
+    <div class="win-header">
+        <span>📁 Файловый менеджер</span>
+        <div class="win-controls">
+            <button class="ctrl-btn" onclick="minimizeWindow('win-file-manager')">_</button>
+            <button class="ctrl-btn" onclick="maximizeWindow('win-file-manager')">□</button>
+            <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-file-manager')">✕</button>
+        </div>
+    </div>
+    <div class="win-content">
+        <div class="fm-tabs">
+            <div class="fm-tab active" onclick="switchFMTab('docs', this)">📄 Документы</div>
+            <div class="fm-tab" onclick="switchFMTab('system', this)">⚙️ Система</div>
+            <div class="fm-tab" onclick="switchFMTab('desktop', this)">🖥 Рабочий стол</div>
+            <div class="fm-tab" onclick="switchFMTab('backup', this)">💾 Бэкап</div>
+        </div>
+        <div id="fm-controls"></div>
+        <div id="fm-grid"></div>
+    </div>
+</div>
+
+<!-- ===== ОКНО БЛОКНОТА ===== -->
+<div id="win-notepad" class="window">
+    <div class="win-header">
+        <span id="np-title">📝 Блокнот</span>
+        <div class="win-controls">
+            <button class="ctrl-btn" onclick="minimizeWindow('win-notepad')">_</button>
+            <button class="ctrl-btn" onclick="maximizeWindow('win-notepad')">□</button>
+            <button class="ctrl-btn" style="background:var(--danger)" onclick="closeWindow('win-notepad')">✕</button>
+        </div>
+    </div>
+    <div class="win-content">
+        <div style="display:flex; gap:5px; margin-bottom:8px;">
+            <input type="text" id="np-filename" placeholder="Имя файла" style="flex:1;">
+            <button class="btn" onclick="saveNotepad()">💾 Сохранить</button>
+        </div>
+        <textarea id="np-text" placeholder="Начните печатать..."></textarea>
+    </div>
+</div>
+
+<!-- ===== СКРЫТЫЙ ИНПУТ ДЛЯ БЭКАПА ===== -->
+<input type="file" id="backup-upload" accept=".json" style="display:none;">
+
+<!-- ===== ПОДКЛЮЧЕНИЕ МОДУЛЕЙ ===== -->
+<!-- Старые файлы (без изменений) -->
+<script src="themes-data.js"></script>
+<script src="services/vfs.js"></script>
+<script src="services/game-service.js"></script>
+
+<!-- Новая модульная точка входа -->
+<script type="module" src="main.js"></script>
+
+</body>
+</html>
